@@ -1,0 +1,27 @@
+DBlib.pm
+DBlib.xs
+MANIFEST
+makefile.pl
+DBlib/Const.pm                Module for all constants.
+DBlib/Const/Aggregates.pm
+DBlib/Const/BCP.pm
+DBlib/Const/Cursor.pm
+DBlib/Const/Datatypes.pm
+DBlib/Const/DBSETLNAME.pm
+DBlib/Const/Errors.pm
+DBlib/Const/General.pm
+DBlib/Const/MaxValues.pm
+DBlib/Const/NetlibErrors.pm
+DBlib/Const/Offset.pm
+DBlib/Const/Options.pm
+DBlib/Const/Print.pm
+DBlib/Const/RPC.pm
+DBlib/Const/ServerInfo.pm
+DBlib/Const/Severity.pm
+DBlib/Const/Streamtokens.pm
+DBlib/Const/Text.pm
+DBlib/Const/Timeout.pm
+t/1_dblib.t                    Basic tests for DBlib
+t/2_bcp.t                      Test of BCP
+t/3_text.t                     Test of text
+t/sqllogin.pl                  Username, password and server for test scripts.

@@ -1,0 +1,56 @@
+<HTML>
+<BODY>
+This is a small collection of demonstrations files on how to use the
+MSSQL classes. Some of these were culled from the Sybperl distribution.
+You may want to edit them to change user, password or server.
+<P>
+<B>bcp.pl, bcp.dat - </B> a simple demo on how to use bcp.
+<P>
+<B>dbschema.10.pl, dbschema.old.pl - </B>
+dbschema is supposed to generate a script of a database. I've adapted it from
+Sybperl so far that it runs and produces an output. The output is bogus, though,
+presumably due to that the system tables in Sybase 10/11 do not look exactly as
+those of MSSQL 6.x.
+<P>
+<B>dbtext.pl - </B>an example on how to use dbwritetext.
+<P>
+<B>rpctest.pl - </B>an elaborate example on using the RPC routines directly from
+Perl. (It <I>is</I> easier to use <A HREF="../docs/mssql-sqllib.html#sql_sp">sql_sp</A>
+sp in MSSQL::Sqllib. :-)
+<P>
+<B>sptritest.bat - </B>
+this is actually a useful utilility. (And don't get fooled by the extension.
+It's just a Perl script wrapped into a BAT file.)
+<P>
+ SPTRITEST runs each stored procedure and trigger in a database and
+ accesses all views. Nonsens values are used as parameters. SPTRITEST
+ reports all errors that occurs. Well almost all, some errors that are
+ likely to be due to the nonsense values are filtered away. What
+ you should look for are errors that are due to incorrect SQL, for
+ instance joins between different user-defined datatypes, errors
+ that SQL Server does not detect at CREATE time. Thus, SPTRITEST
+ for helping to find problems in your database, before the problems
+ find you.
+<P>
+ WARNING! Don't run SPTRITEST in a database with data you care
+ about. SPTRITEST do not try to clean up the nonsense it might
+ insert.
+<P>
+<B>sqllib-simple.pl - </B>a simple example of using the MSSQL::Sqllib module.
+<P>
+<B>sqllibtest.pl - </B>a script which uses MSSQL::Sqllib in several ways. It used
+to be  my test script, before I wrote the real test scripts. You couldn't
+say that the script makes much sense, but you might find something.
+<P>
+<B>statistics.pl - </B>a simple example of a message handler where we catch
+messages from SET STATISTICS IO/TIME.
+<P>
+<B>who.pl - </B>a simple example on a report with MSSQL::DBlib which also shows
+how to use MSSQL::DBlib for a simple query. It produces an awful lot of
+warnings when run with <KBD>-w</KBD>, though.
+<HR>
+<I>
+Last updated <!--$$Modtime:--> 99-01-30 16:02 <!-- $-->
+</I>
+</BODY>
+</HTML>

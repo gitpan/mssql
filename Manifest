@@ -1,0 +1,58 @@
+makefile.pl                         Makefile.pl for the lot.
+Manifest                            This file.
+README-srcdist.html                 README file for this distribution.
+HISTORY.html                        History file for MSSQL::*.
+Tests.html                          Some info on the test scripts.
+docs/mssql-dblib.pod                POD for MSSQL::DBlib.
+docs/mssql-dblib.html               Preformatted HTML for MSSQL::DBlib.
+docs/mssql-sqllib.pod               POD for MSSQL::Sqllib.
+docs/mssql-sqllib.html              Preformatted HTML for MSSQL::Sqllib.
+docs/dopod.bat                      Simple BAT-file that formats the pods.
+eg/README.html                      READNE for sample scripts.
+eg/bcp.pl                           Simple demo of using BCP routines.
+eg/bcp.dat                          Data file for bcp.dat.
+eg/dbschema.10.pl                   Generates DBschema for Sybase, and broken for MSSQL.
+eg/dbschema.old.pl                  Ditto.
+eg/dbtext.pl                        Simple example on using dbwritetext.
+eg/rpctest.pl                       How to use RPC calls in MSSQL::DBlib.
+eg/sptritest.bat                    Utililty that tests all SPs, triggers and views for simple errors.
+eg/sqllib-simple.pl                 Simple demo of MSSQL::Sqllib.
+eg/sqllibtest.pl                    A more complex sample of MSSQL::Sqllib use.
+eg/statistics.pl                    How to catch SHOW STATISTICS messages.
+eg/who.pl                           Simple demo of MSSQL::DBlib which is like sp_who.
+DBlib/DBlib.pm                      Perl module for MSSQL::DBlib
+DBlib/DBlib.xs                      XS file for MSSQL::DBlib
+DBlib/MANIFEST                      Local MANIFEST file for DBlib.
+DBlib/makefile.pl                   Makefile.pl for DBlib. You probably need to edit this one!
+DBlib/DBlib/Const.pm                Module for all constants.
+DBlib/DBlib/Const/Aggregates.pm     Modules for constants split up by function.
+DBlib/DBlib/Const/BCP.pm            Ditto.
+DBlib/DBlib/Const/Cursor.pm         Ditto.
+DBlib/DBlib/Const/Datatypes.pm      Ditto.
+DBlib/DBlib/Const/DBSETLNAME.pm     Ditto.
+DBlib/DBlib/Const/Errors.pm         Ditto.
+DBlib/DBlib/Const/General.pm        Ditto.
+DBlib/DBlib/Const/MaxValues.pm      Ditto.
+DBlib/DBlib/Const/NetlibErrors.pm   Ditto.
+DBlib/DBlib/Const/Offset.pm         Ditto.
+DBlib/DBlib/Const/Options.pm        Ditto.
+DBlib/DBlib/Const/Print.pm          Ditto.
+DBlib/DBlib/Const/RPC.pm            Ditto.
+DBlib/DBlib/Const/ServerInfo.pm     Ditto.
+DBlib/DBlib/Const/Severity.pm       Ditto.
+DBlib/DBlib/Const/Streamtokens.pm   Ditto.
+DBlib/DBlib/Const/Text.pm           Ditto.
+DBlib/DBlib/Const/Timeout.pm        Ditto.
+DBlib/t/1_dblib.t                   Basic tests for DBlib
+DBlib/t/2_bcp.t                     Test of BCP
+DBlib/t/3_text.t                    Test of text
+DBlib/t/sqllogin.pl                 Username, password and server for DBlib test scripts.
+Sqllib/sqllib.pm                    Perl file for MSSQL::Sqllib. (No XS for this one.)
+Sqllib/MANIFEST                     Local MANIFEST for MSSQL::Sqllib.
+Sqllib/makefile.pl                  Makefile.pl for MSSQL::Sqllib.
+Sqllib/t/1_resultsets.t      Test of results sets in all combinations, and use of NULL.
+Sqllib/t/2_sptest.t          Test of stored procedures, of datatypes and odd MSSQL::DBlib flags.
+Sqllib/t/3_conversion.t      Test of character-set conversion.
+Sqllib/t/4_errors.t          Test of error handling.
+Sqllib/t/5_uniqueid.t        Test of the SQL7 datatype uniqueidentifier.
+Sqllib/t/sqllogin.pl         Username, password and server for Sqllib test scripts.

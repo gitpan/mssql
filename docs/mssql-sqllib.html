@@ -1,0 +1,1997 @@
+    <HTML> 
+	<HEAD> 
+	    <TITLE>MSSQL::Sqllib - SQL Library for Microsoft SQL Server from Perl
+
+</TITLE> 
+	</HEAD>
+
+	<BODY>
+
+<!-- INDEX BEGIN -->
+
+<UL>
+
+	<LI><A HREF="#NAME">NAME</A>
+	<LI><A HREF="#SYNOPSIS">SYNOPSIS</A>
+	<LI><A HREF="#OVERVIEW">OVERVIEW</A>
+	<LI><A HREF="#EXPORT_TAGS">EXPORT TAGS</A>
+	<LI><A HREF="#FUNCTION_DESCRIPTIONS">FUNCTION DESCRIPTIONS</A>
+	<UL>
+
+		<LI><A HREF="#Summary">Summary</A>
+		<LI><A HREF="#sql_init">sql_init</A>
+		<LI><A HREF="#sql">sql</A>
+		<LI><A HREF="#sql_one">sql_one</A>
+		<LI><A HREF="#sql_sp">sql_sp</A>
+		<LI><A HREF="#sql_insert">sql_insert</A>
+		<LI><A HREF="#sql_string">sql_string</A>
+		<LI><A HREF="#Transaction_routines">Transaction routines</A>
+		<LI><A HREF="#sql_set_conversion">sql_set_conversion</A>
+		<LI><A HREF="#sql_unset_conversion">sql_unset_conversion</A>
+		<LI><A HREF="#sql_message_handler">sql_message_handler</A>
+		<LI><A HREF="#sql_error_handler">sql_error_handler</A>
+	</UL>
+
+	<LI><A HREF="#HANDLE_ATTRIBUTES">HANDLE ATTRIBUTES</A>
+	<UL>
+
+		<LI><A HREF="#Misc_attributes">Misc attributes</A>
+		<LI><A HREF="#errInfo">errInfo</A>
+	</UL>
+
+	<LI><A HREF="#SQL_Server_7_issues">SQL Server 7 issues</A>
+	<LI><A HREF="#ACKNOWLEDGEMENTS">ACKNOWLEDGEMENTS</A>
+	<LI><A HREF="#AUTHOR">AUTHOR</A>
+</UL>
+<!-- INDEX END -->
+
+<HR>
+<P>
+<HR>
+<H1><A NAME="NAME">NAME
+
+</A></H1>
+MSSQL::Sqllib - SQL Library for Microsoft SQL Server from Perl
+
+
+<P>
+
+<P>
+<HR>
+<H1><A NAME="SYNOPSIS">SYNOPSIS
+
+</A></H1>
+<PRE>   use MSSQL::Sqllib;
+</PRE>
+
+<P>
+
+<PRE>   use MSSQL::Sqllib qw(:DEFAULT :consts);
+</PRE>
+
+<P>
+
+<PRE>   use MSSQL::Sqllib qw(:DEFAULT [:resultstyles] [:rowstyles] [:directions]
+                                 [:returns] [$SQLSEP]);
+</PRE>
+
+<P>
+
+<P>
+<HR>
+<H1><A NAME="OVERVIEW">OVERVIEW
+
+</A></H1>
+MSSQL::Sqllib is a Perl module that inherits from <A HREF="././mssql-dblib.html#MSSQL_DBlib">MSSQL/DBlib</A> 
+and extends it with a high-level interface, providing the possibility to
+send an SQL command and retrieve the result in one line of code and forget
+about error-checking. By default MSSQL::Sqllib will abort in case of a
+error, be it in DB-Library or SQL Server. The result set(s) from the SQL query can be received by callback or in a return value which
+can be structured in several ways, ranging from one single scalar up to a
+three-dimensional array, or in a hash with keyed with key values in the
+data.
+
+
+<P>
+
+There are also special calls for single-row queries, for generating INSERT
+statements from a hash, and generating code for calling stored procedures
+and retrieve output parameters.
+
+
+<P>
+
+MSSQL::Sqllib has a configurable message handler for SQL errors, permitting
+you to choose which errors you tolerate and which you do not. You can opt
+to get the errors messages sent back to you and/or have them printed on
+STDERR. A similar arrangement exists for handling DB-Library errors.
+
+
+<P>
+
+MSSQL::Sqllib also provides the possibility to chose your own character
+conversion much more freely than Microsoft's ANSI/OEM concept permits.
+
+
+<P>
+
+For special tasks, you have access to all calls in MSSQL::DBlib.
+
+
+<P>
+
+A simple example of using this module:
+
+
+<P>
+
+<PRE>      use MSSQL::Sqllib;
+</PRE>
+
+<P>
+
+<PRE>      # Log into the server.
+      sql_init(&quot;&quot;, &quot;sa&quot;, &quot;&quot;, &quot;master&quot;);
+</PRE>
+
+<P>
+
+<PRE>      # Run a query.
+      @x = sql(&quot;SELECT dbid, name, crdate FROM sysdatabases&quot;);
+</PRE>
+
+<P>
+
+<PRE>      # Just print the results, it's a list of hashes.
+      foreach $x (@x) {
+        foreach $kol (keys %$x) {
+           print &quot;$kol: $$x{$kol}   &quot;;
+        }
+        print &quot;\n&quot;;
+      }
+</PRE>
+
+<P>
+
+It is worth noting that while MSSQL::Sqllib is implemented for one certain
+RDBMS engine, on top of one certain client library, its interface is
+decently general, and should find no problems to be re-implemented with
+another client library and also another RDBMS engine.
+
+
+<P>
+
+That being said, we come to the part where I have to say that due to
+Microsoft's move not to develop DB-Library any further, MSSQL::Sqllib is
+fairly restricted in what it supports of the novelties in SQL Server 7. See
+the section 
+<A HREF="#SQL_Server_7_issues">SQL Server 7 issues</A> at the end of this document.
+
+
+<P>
+
+<P>
+<HR>
+<H1><A NAME="EXPORT_TAGS">EXPORT TAGS
+
+</A></H1>
+By default MSSQL::Sqllib exports a couple of routines. They are described
+in the section <A HREF="#FUNCTION_DESCRIPTIONS">FUNCTION DESCRIPTIONS</A>.
+
+
+<P>
+
+MSSQL::Sqllib also exports a number of constants that are used in the
+interface of the routines. To avoid clashes with other modules, they are
+not exported by default. You can request these being imported by mentioning
+them in your <CODE>use</CODE> statement, either by mentioning them explicitly, or using any the following
+export tags below. Don't forget that export tags must be preceded by a
+colon, see the <A HREF="#SYNOPSIS">SYNOPSIS</A>.
+
+
+<P>
+
+<DL>
+<DT><STRONG><A NAME="item_DEFAULT">DEFAULT
+
+</A></STRONG><DD>
+This tag imports all routines in MSSQL::Sqllib, but no constants. You need
+to use this tag when you add other items to the import list, since as soon
+as you have an explicit list, nothing is imported by default.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_consts">consts
+
+</A></STRONG><DD>
+Imports all constants, as well as $SQLSEP, the only control variable in
+MSSQL::Sqllib. (In fact it is quite much of a constant, save the fact that
+you can change it. :-)
+
+
+<P>
+
+<DT><STRONG><A NAME="item_resultstyles">resultstyles
+
+</A></STRONG><DD>
+Imports these five constants: <A HREF="#item_NORESULT">NORESULT</A>, <A HREF="#item_SINGLEROW">SINGLEROW</A>, <A HREF="#item_SINGLESET">SINGLESET</A>, <A HREF="#item_KEYED">KEYED</A> and
+<A HREF="#item_MULTISET">MULTISET</A>. You use them to choose how the results from an SQL batch are to be
+structured on Perl level.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_rowstyles">rowstyles
+
+</A></STRONG><DD>
+Imports these three constants: <A HREF="#item_SCALAR">SCALAR</A>, <A HREF="#item_LIST">LIST</A> and <A HREF="#item_HASH">HASH</A>. You use them to choose how the rows in a result set is to be represented.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_directions">directions
+
+</A></STRONG><DD>
+Imports these three constants: <A HREF="#item_TO_SERVER_ONLY">TO_SERVER_ONLY</A>, <A HREF="#item_TO_CLIENT_ONLY">TO_CLIENT_ONLY</A> and
+<A HREF="#item_TO_SERVER_CLIENT">TO_SERVER_CLIENT</A>. You use them with the configuration routines
+<A HREF="#sql_set_conversion">sql_set_conversion</A> and <A HREF="#sql_unset_conversion">sql_unset_conversion</A>.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_returns">returns
+
+</A></STRONG><DD>
+Imports these five constants: <A HREF="#item_RETURN_NEXTROW">RETURN_NEXTROW</A>, <A HREF="#item_RETURN_NEXTQUERY">RETURN_NEXTQUERY</A>,
+<A HREF="#item_RETURN_CANCEL">RETURN_CANCEL</A>, <A HREF="#item_RETURN_ERROR">RETURN_ERROR</A> and <A HREF="#item_RETURN_ABORT">RETURN_ABORT</A>. You use them for return values from callback routines.
+
+
+<P>
+
+</DL>
+<P>
+<HR>
+<H1><A NAME="FUNCTION_DESCRIPTIONS">FUNCTION DESCRIPTIONS
+
+</A></H1>
+<P>
+<HR>
+<H2><A NAME="Summary">Summary
+
+</A></H2>
+<A HREF="#sql_init">sql_init</A> sets up message and error handlers, logs into the server, sets up defaults
+and returns a blessed reference.
+
+
+<P>
+
+<A HREF="#sql">sql</A> runs a batch of one or more SQL queries and returns the result which can be
+structured in the way of your choice. Alternatively, <A HREF="#sql">sql</A> can send the results row by row to a user-provided callback routine. By
+default, if an error occurs, <A HREF="#sql">sql</A> will abort the Perl script.
+
+
+<P>
+
+<A HREF="#sql_one">sql_one</A> runs an SQL query that is supposed to return exactly one row, and <A HREF="#sql_one">sql_one</A> will abort if the query does not.
+
+
+<P>
+
+<A HREF="#sql_sp">sql_sp</A> calls a stored procedure with named or unnamed parameters and retrieves the
+result sets, the return value and any output parameters of the SP.
+
+
+<P>
+
+<A HREF="#sql_insert">sql_insert</A> generates an INSERT statement from a hash and executes the statement.
+
+
+<P>
+
+<A HREF="#sql_begin_trans">sql_begin_trans</A>, <A HREF="#sql_commit">sql_commit</A>, <A HREF="#sql_rollback">sql_rollback</A> begin and end transactions.
+
+
+<P>
+
+<A HREF="#sql_string">sql_string</A> formats a string to use in an SQL statement.
+
+
+<P>
+
+<A HREF="#sql_set_conversion">sql_set_conversion</A> sets up a conversion from one character-set to another. The conversion may
+be bi-directional, or only from client to server or vice versa.
+
+
+<P>
+
+<A HREF="#sql_unset_conversion">sql_unset_conversion</A> removes a conversion in force.
+
+
+<P>
+
+<A HREF="#sql_message_handler">sql_message_handler</A> is a configurable handler for SQL Server messages.
+
+
+<P>
+
+<A HREF="#sql_error_handler">sql_error_handler</A> is a configurable handler for DB-Library errors.
+
+
+<P>
+
+<P>
+<HR>
+<H2><A NAME="sql_init">sql_init
+
+</A></H2>
+<PRE>    $X = sql_init([$server [, $user [, $password [, $database]]]]);
+    $X = new MSSQL::Sqllib [, $user [, $password [, $database]]]];
+</PRE>
+
+<P>
+
+<A HREF="#sql_init">sql_init</A> logs into SQL Server, and performs a number of initializations listed
+below. <STRONG>new</STRONG> simply calls <A HREF="#sql_init">sql_init</A>.
+
+
+<P>
+
+The following defaults apply for the parameters:
+
+
+<P>
+
+<STRONG>$server</STRONG>: the server on the local machine.
+
+
+<P>
+
+<STRONG>$user</STRONG>: <EM>sa</EM>.
+
+
+<P>
+
+<STRONG>$password</STRONG>: NULL.
+
+
+<P>
+
+<STRONG>$database</STRONG>: the user's default database as defined in SQL Server, with one exception:
+for <EM>sa</EM>, the database will be <EM>tempdb</EM> to avoid a disaster, were you to accidently omit $database.
+
+
+<P>
+
+To use integrated security, call the MSSQL::DBlib routine <A HREF="#DBSETLSECURE">DBSETLSECURE</A>
+before calling <A HREF="#sql_init">sql_init</A>.
+
+
+<P>
+
+The following initializations are performed:
+
+
+<P>
+
+<UL>
+<LI><STRONG></STRONG>
+The first time <A HREF="#sql_init">sql_init</A> is called, it will establish
+<A HREF="#sql_message_handler">sql_message_handler</A> and <A HREF="#sql_error_handler">sql_error_handler</A> as message and error handlers. On further calls, the then-current handlers
+will be retained.
+
+
+<P>
+
+<LI><STRONG></STRONG>
+Sets the attributes <A HREF="././mssql-dblib.html#item_dateFormat">dateFormat</A> and <A HREF="././mssql-dblib.html#item_msecFormat">msecFormat</A> to <CODE>%Y%m%d %H:%M:%S</CODE> and
+<CODE>.%3.3d</CODE> respectively, giving a default representation for datetime values in the
+style of ``19980106 13:29:19.230''.
+
+
+<P>
+
+<LI><STRONG></STRONG>
+Turns of any ANSI/OEM conversion that may be in effect. See <A HREF="#sql_set_conversion">sql_set_conversion</A> 
+if you wish to use character-set conversion.
+
+
+<P>
+
+</UL>
+If any error occurs while setting up the connection, <A HREF="#sql_init">sql_init</A> will abort execution. This includes errors that are not considered fatal by
+SQL Server, such as the user's default database in SQL Server not being
+accessible. (If you need to continue after a failed login, remember that
+you can always run your <A HREF="#sql_init">sql_init</A> from an <CODE>eval</CODE>.)
+
+
+<P>
+
+The return value from <A HREF="#sql_init">sql_init</A> is a blessed reference to a hash, in this document usually called a <EM>handle</EM>. The handle that is created the first time
+<A HREF="#sql_init">sql_init</A> is called becomes the default handle for calls to other routines in
+MSSQL::Sqllib. Thus, in many cases, you don't actually need to take care of
+the handle.
+
+
+<P>
+
+<P>
+<HR>
+<H2><A NAME="sql">sql
+
+</A></H2>
+<PRE>    $resultref = [$X-&gt;]sql($sql [, $rowstyle [, $resultstyle]]);
+    @result    = [$X-&gt;]sql($sql [, $rowstyle [, $resultstyle]]);
+    %result    = [$X-&gt;]sql($sql, HASH, SINGLEROW);
+</PRE>
+
+<P>
+
+<PRE>    $hashref   = [$X-&gt;]sql($sql, $rowstyle, KEYED, \@keys);
+    %hash      = [$X-&gt;]sql($sql, $rowstyle, KEYED, \@keys);
+</PRE>
+
+<P>
+
+<PRE>    $retstat   = [$X-&gt;]sql($sql, $rowstyle, \&amp;callback);
+</PRE>
+
+<P>
+
+<STRONG>$sql</STRONG>, the only mandatory parameter to <A HREF="#sql">sql</A>, is a string containing one or more SQL statements. <A HREF="#sql">sql</A> executes them as one batch (thus you cannot separate batches with <EM>go</EM>), and in case of success returns the result set.
+
+
+<P>
+
+By default, if SQL Server or DB-Library signals an error, execution is
+aborted. You can alter this behaviour with the various elemetns of the
+handle attribute
+<A HREF="#errInfo">errInfo</A>. See this attribute for details.
+
+
+<P>
+
+If you don't provide a handle, <A HREF="#sql">sql</A> uses the handle created by the first call to <A HREF="#sql_init">sql_init</A>.
+
+
+<P>
+
+For details on how the various data types in SQL Server is returned, see
+the MSSQL::DBlib routine <A HREF="././mssql-dblib.html#dbnextrow2">dbnextrow2</A>.
+
+
+<P>
+
+The data from SQL Server can be structured in several different ways, as
+determined by the parameters <CODE>$rowstyle</CODE> and $resultstyle.
+<CODE>$rowstyle</CODE> determines how individual rows appears,
+<CODE>$resultstyle</CODE> how the rows are structured. Below I say that the
+return value for a certain combination is a scalar, array or a hash. In
+every case when I say array or hash, you can always opt for receiving the
+return value in a scalar to get a reference to that array/hash.
+
+
+<P>
+
+<STRONG>Row style</STRONG>
+
+
+
+
+<P>
+
+<STRONG>$rowstyle</STRONG> controls how each row is to appear at the lowest level of the result. There
+are three possible values:
+
+
+<P>
+
+<DL>
+<DT><STRONG><A NAME="item_HASH">HASH
+
+</A></STRONG><DD>
+Each row is returned as a hash with the column names as keys. Nameless
+columns are called <EM>Col 1</EM>, <EM>Col 2</EM> etc. This is the default row style.
+
+
+<P>
+
+If more than one column in a result set has the same name, only one of them
+will be present in the result set. If warnings are active, you will receive
+a warning about this condition.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_LIST">LIST
+
+</A></STRONG><DD>
+Each row is returned as an array with the columns appearing in the order
+they appeared in the query with the first column at index 0.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_SCALAR">SCALAR
+
+</A></STRONG><DD>
+Each row is returned as a scalar value. SCALAR is mainly intended for
+one-columns queries, but if the query has more than one column, they are
+separated by the module attribute <CODE>$MSSQL::Sqllib::SQLSEP</CODE>. Initially <CODE>$SQLSEP</CODE> has the value 
+<CODE>"\022"</CODE>, a control character. You can set it to a string of any length that fit
+your needs. Note, however, that the value of <CODE>$SQLSEP</CODE> <EM>must not</EM> appear in the actual data.
+
+
+<P>
+
+</DL>
+<STRONG>Result styles</STRONG>
+
+
+
+
+<P>
+
+<STRONG>$resultstyle</STRONG> controls how the rows are ``packaged''. There are five possible values:
+
+
+<P>
+
+<DL>
+<DT><STRONG><A NAME="item_SINGLESET">SINGLESET
+
+</A></STRONG><DD>
+The rows are returned in one single array, which thus is an array of
+hashes, arrays or scalars depending on $rowstyle. The order of the array is
+the same as the order returned from SQL Server. If the batch returns two or
+more result sets, these will come after each other in the result set, and
+you will have to separate them yourself.
+
+
+<P>
+
+<A HREF="#item_SINGLESET">SINGLESET</A> is the default resultstyle.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_MULTISET">MULTISET
+
+</A></STRONG><DD>
+You get an array of result sets in the order they come from SQL Server.
+Each result set is in its turn an array of hashes, arrays or scalars
+dependning on $rowstyle.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_SINGLEROW">SINGLEROW
+
+</A></STRONG><DD>
+The return value is a hash, an array or a scalar with the single row that
+the batch is supposed to return. When you specify <A HREF="#item_SCALAR">SCALAR</A> and <A HREF="#item_SINGLEROW">SINGLEROW</A>, and provide a scalar return value, you will get the actual row, not a
+reference to a scalar.
+
+
+<P>
+
+Would the batch return more than one row, or more than one result set, you
+get what you get, and it may or may not make sense. See also <A HREF="#sql_one">sql_one</A>.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_KEYED">KEYED
+
+</A></STRONG><DD>
+The return value is a hash keyed with the data in the highest-level key
+column in the result set. There can be more than one key level, in which
+case you will get one more hash dimension for each key level. In the bottom
+of the structure there is a hash, array or scalar, depending on $rowstyle,
+with the non-key columns of the result set.
+
+
+<P>
+
+Which column(s) that supply the key values, is determined by the parameter 
+<STRONG>@keys</STRONG>, which is mandatory for <A HREF="#item_KEYED">KEYED</A>. For row style <A HREF="#item_HASH">HASH</A>, <CODE>@keys</CODE> should hold the name of the key column(s) of the result set. For row style <A HREF="#item_LIST">LIST</A>
+and <A HREF="#item_SCALAR">SCALAR</A>, <CODE>@keys</CODE> should hold the column number of the key(s). Column numbers start on 1. 
+
+
+<P>
+
+A simple example, retrieve all types and their ids:
+
+
+<P>
+
+<PRE>    %types = sql(&quot;SELECT name, type FROM systypes&quot;, SCALAR, KEYED, [1]);
+    foreach $type (keys %types) {
+       print &quot;$type:  $types{$type}\n&quot;;
+    }
+</PRE>
+
+<P>
+
+A more complicated case. The table Tbl has the columns key1, key2, key3,
+val1, val2, ... Among other data, we want to retrive the value val4 for the
+key ABC/17/X.
+
+
+<P>
+
+<PRE>    $result = sql(&quot;SELECT * FROM Tbl&quot;, HASH, KEYED, 
+                  ['key1', 'key2', 'key3']);
+    $val4 = $$result{'ABC'}{'17'}{'X'}{'val4'};
+</PRE>
+
+<P>
+
+The keys you provide in <CODE>@keys</CODE> are supposed to be the unique
+keys of your result set, and appear in all rows of the result set(s). If a key listed in <CODE>@keys</CODE> does not appear in one of the rows,
+this is an error, and <A HREF="#sql">sql</A> will unconditionally abort. If a key value is a duplicate, <A HREF="#sql">sql</A> will emit a warning about this, if warnings are activated. It is undefined
+which values end up in the result set.
+
+
+<P>
+
+If one or more of your key columns can hold NULL values, you will get
+warnings about uninitialized value from Perl if you run with <CODE>-w</CODE>. One way to avoid this warning, is to set the handle attribute <A HREF="././mssql-dblib.html#item_dbNullIsUndef">dbNullIsUndef</A> to 0, in which case NULL values will be received as the string ``NULL''
+instead of <CODE>undef</CODE>.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_NORESULT">NORESULT
+
+</A></STRONG><DD>
+The batch is not expected to return any data, or you simply do not care
+about it, and wish to save network traffic. The return value is <CODE>undef</CODE> or an empty array.
+
+
+<P>
+
+</DL>
+The script <EM>sqllib\t\1_resultsets.t</EM> can give you an idea of the structure you get with the various row and
+result styles.
+
+
+<P>
+
+<STRONG>Callbacks</STRONG>
+
+
+
+
+<P>
+
+Instead of a result style, you can provide a callback. <A HREF="#sql">sql</A> calls your callback in this way, depending on $rowstyle:
+
+
+<P>
+
+<PRE>       $retstat = &amp;$callback(\%row, $resultset_no);   # HASH
+       $retstat = &amp;$callback(\@row, $resultset_no);   # LIST
+       $retstat = &amp;$callback($row,  $resultset_no);   # SCALAR
+</PRE>
+
+<P>
+
+<STRONG>$resultset_no</STRONG> tells you which result set the row comes from. The result sets are numbered
+from 1 and up. 
+
+
+<P>
+
+The callback should return any of the integer numbers detailed below. The
+return value from the last call to the callback is the return value from <A HREF="#sql">sql</A>.
+
+
+<P>
+
+<DL>
+<DT><STRONG><A NAME="item_RETURN_NEXTROW">RETURN_NEXTROW
+
+</A></STRONG><DD>
+Tells <A HREF="#sql">sql</A> to give you the next row (if there is one, that is). This is the ``normal''
+return value. I usually don't leak constant values, but if you think
+RETURN_NEXTROW is too noisy, I can reveal that <STRONG>1</STRONG> will do the same task.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_RETURN_NEXTQUERY">RETURN_NEXTQUERY
+
+</A></STRONG><DD>
+Tells <A HREF="#sql">sql</A> to cancel the current result set, and proceed to the next one. If there are
+no more result sets, this is how the story ends.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_RETURN_CANCEL">RETURN_CANCEL
+
+</A></STRONG><DD>
+<DT><STRONG><A NAME="item_RETURN_ERROR">RETURN_ERROR
+
+</A></STRONG><DD>
+From the point of view of <A HREF="#sql">sql</A> these are the same. The entire batch will be cancelled and that's it. There
+are two different values, though, so when getting the return value from <A HREF="#sql">sql</A> you can tell them apart. RETURN_CANCEL probably means that you found what
+you was looking for. RETURN_ERROR probably means that something went wrong.
+RETURN_ERROR conveniently has the value 0.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_RETURN_ABORT">RETURN_ABORT
+
+</A></STRONG><DD>
+Something went terribly wrong and you don't want to live any more. You want
+<A HREF="#sql">sql</A> to hold the axe though, so it can cancel the query before it aborts. Useful
+if <A HREF="#sql">sql</A> was called from inside an <CODE>eval</CODE>.
+
+
+<P>
+
+</DL>
+A few goods and bads with callbacks:
+
+
+<P>
+
+<UL>
+<LI><STRONG></STRONG>
+Good thing: saves you from dealing with multi-dimensional structures, which
+can be confusing at times.
+
+
+<P>
+
+<LI><STRONG></STRONG>
+Good thing: if you are retrieving a large result set, you don't need to
+gather all the data in client before processing them.
+
+
+<P>
+
+<LI><STRONG></STRONG>
+(Slightly) bad thing: if you want to execute SQL statements from your
+callback, you need to use another handle for that, as DB-Library does not
+permit you to intiate a new query as long as there are results sets
+available.
+
+
+<P>
+
+<LI><STRONG></STRONG>
+Bad thing: if the tables are large you may hold a lock on them for a
+considerable time. This also means that it is not always a bright to idea
+to send an UPDATE on the tables from the callback. As this is done from
+another connection, you may in fact end up locking yourself.
+
+
+<P>
+
+</UL>
+<STRONG>COMPUTE BY</STRONG>
+
+
+
+
+<P>
+
+If the batch contains COMPUTE BY clauses, the COMPUTE rows will come
+interleaved with the regular rows. With the <A HREF="#item_LIST">LIST</A> and <A HREF="#item_SCALAR">SCALAR</A> rowstyle values, you have to do the best you can to tell which is which.
+With <A HREF="#item_HASH">HASH</A>, though, the COMPUTE rows will have an extra column <STRONG>COMPUTEID</STRONG> that holds the number of the COMPUTE BY clause in the query.
+
+
+<P>
+
+<P>
+<HR>
+<H2><A NAME="sql_one">sql_one
+
+</A></H2>
+<PRE>    %result = [$X-&gt;]sql_one($sql[, HASH]);
+    @result = [$X-&gt;]sql_one($sql, LIST);
+    $result = [$X-&gt;]sql_one($sql[, SCALAR)];
+</PRE>
+
+<P>
+
+<A HREF="#sql_one">sql_one</A> is similar to <A HREF="#sql">sql</A> with the <A HREF="#item_SINGLEROW">SINGLEROW</A> result style. However,
+<A HREF="#sql_one">sql_one</A> requires the SQL batch to return exactly one row, and will abort execution
+if no rows were found, or if there were more than one row or result set.
+
+
+<P>
+
+<P>
+<HR>
+<H2><A NAME="sql_sp">sql_sp
+
+</A></H2>
+<PRE>   $resultref = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params] 
+                                 [, $rowstyle [, $resultstyle]]);
+   @result    = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params] 
+                                 [, $rowstyle [, $resultstyle]]);
+   %result    = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params], 
+                                 HASH, SINGLESET);
+</PRE>
+
+<P>
+
+<PRE>   $hashref   = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params], 
+                                 $rowstyle, KEYED, \@keys);
+   %hash      = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params], 
+                                 $rowstyle, KEYED, \@keys);
+</PRE>
+
+<P>
+
+<PRE>   $retstat   = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params], 
+                                 $rowstyle, \&amp;callback);
+</PRE>
+
+<P>
+
+<A HREF="#sql_sp">sql_sp</A> calls the stored procedure <CODE>$sp</CODE> and retrieves the return status
+of the SP and values of output parameters. To find out datatypes and output
+parameters, <A HREF="#sql_sp">sql_sp</A> interrogates the server and caches the parameter profile internally in case
+the same SP is called again. See the handle attribute <A HREF="#item_procs">procs</A>
+for details about caching.
+
+
+<P>
+
+By default, if an error occurs in SQL Server or in DB-Library, or the
+procedure returns a non-zero value, execution is aborted. This behaviour is
+controlled by various elements the handle attribute <A HREF="#errInfo">errInfo</A>. See further this attribute.
+
+
+<P>
+
+If you don't provide a handle, <A HREF="#sql_sp">sql_sp</A> uses the handle created by the first call to <A HREF="#sql_init">sql_init</A>.
+
+
+<P>
+
+The various return values of <A HREF="#sql_sp">sql_sp</A>, as well as the parameters <STRONG>$rowstyle</STRONG>, 
+<STRONG>$resultstyle</STRONG>, <STRONG>&callback</STRONG>, and <STRONG>@keys</STRONG> work exactly in the same way as with 
+<A HREF="#sql">sql</A>, please see this routine for details.
+
+
+<P>
+
+<STRONG>\$sp_retstat</STRONG> is a reference to scalar that is to receive the return status of the stored
+procedure. This parameter is only of interest, if you have changed the <A HREF="#item_checkRetStat">checkRetStat</A> or <A HREF="#item_retStatOK">retStatOK</A> elements of <A HREF="#errInfo">errInfo</A> to permit one or more non-zero return values.
+
+
+<P>
+
+<STRONG>\@params</STRONG> is a reference to an array that holds unnamed parameters to the stored
+procedure in the order as they appear in the procedure declaration. The
+array elements can be scalars with the actual parameter values, or
+references to scalars that hold the values. Values and references can be
+mixed. If any of the parameters is an output parameter, the output value
+replaces the input value. When you send in an anonymous array, you need to
+pass output parameters as references, or else you will lose the changes. Of
+this reason
+<A HREF="#sql_sp">sql_sp</A> will emit a warning if warnings are active, when it detects that an output
+parameter has been passed as a value. (Yeah, this warning is bogus if you
+send in an actual array, but there is no way to tell them apart.) See also
+the second of the examples below.
+
+
+<P>
+
+<STRONG>\%params</STRONG> is a reference to a hash with the keys being names of the stored-procedure
+parameter. (Don't forget the <STRONG>@</STRONG>.) For the elements the same issues as for <CODE>\@params</CODE> apply.
+
+
+<P>
+
+Notes: 
+
+
+<P>
+
+<UL>
+<LI><STRONG></STRONG>
+If you provide <CODE>\@param</CODE> as well as <CODE>\%param</CODE>, and the same parameter appears in both, the value in <CODE>\@param</CODE> will be used, and will in fact overwrite what's in <CODE>\%param</CODE>.
+
+
+<P>
+
+<LI><STRONG></STRONG>
+It is undefined wbether output parameters of the datatypes <EM>binary</EM> and <EM>char</EM> 
+will include trailing zeroes or blanks respectively. This actually depends
+on which version of SQL Server you are using.
+
+
+<P>
+
+<LI><STRONG></STRONG>
+To pass NULL for a parameter, send <CODE>undef</CODE>. <A HREF="#sql_sp">sql_sp</A> does not consider the attribute <A HREF="././mssql-dblib.html#item_dbNullIsUndef">dbNullIsUndef</A>.
+
+
+<P>
+
+</UL>
+<STRONG>Examples</STRONG>
+
+
+
+
+<P>
+
+<EM>sp_helpdb</EM> returns two result sets. Here is an example using a callback that prints
+out the result sets in a fairly simple manner:
+
+
+<P>
+
+<PRE>       sub print_hash {
+          my($hash, $ressetno) = @_;
+          my ($col);
+          print &quot;$ressetno: &quot;;
+          foreach $col (%$hash) {
+               print &quot;$col: $$hash{$col} &quot;;
+          }
+          print &quot;\n&quot;;
+          RETURN_NEXTROW;
+       }
+       sql_sp(&quot;sp_helpdb&quot;, ['tempdb'], HASH, \&amp;print_hash);
+</PRE>
+
+<P>
+
+And here is an example with a procedure that takes two dates as parameters
+to count the number of records in that interval. Passing NULL means no
+limit in that direction. The SP permits you to restrict the count to
+records of a certain flavour. The value is returned in an output parameter.
+There are no result sets.
+
+
+<P>
+
+<PRE>     CREATE PROCEDURE putte_sp @startdate datetime = NULL,
+                               @enddate   datetime = NULL,
+                               @flavour   smallint = NULL,
+                               @no_of_rec int      OUTPUT AS
+</PRE>
+
+<P>
+
+Now we want to know how many records there are from 1997 and on, of all
+flavours:
+
+
+<P>
+
+<PRE>     sql_sp('putte_sp', ['19970101'], {'@no_of_rec' =&gt; \$no_of_rec});
+</PRE>
+
+<P>
+
+Notice how we pass a reference to <CODE>$no_of_rec</CODE>, rather than the variable itself, so we can retrieve the output value
+later on.
+
+
+<P>
+
+<P>
+<HR>
+<H2><A NAME="sql_insert">sql_insert
+
+</A></H2>
+<PRE>   [$X-&gt;]sql_insert($table, $valref);
+</PRE>
+
+<P>
+
+<A HREF="#sql_insert">sql_insert</A> generates an INSERT statement from a hash and executes it. No data is
+returned. 
+
+
+<P>
+
+If you don't provide a handle, <A HREF="#sql_insert">sql_insert</A> uses the handle created by the first call to <A HREF="#sql_init">sql_init</A>.
+
+
+<P>
+
+<STRONG>$table</STRONG> is the name of the table, and <STRONG>$valref</STRONG> is a reference to a hash where the name of the keys are taken as column
+names. <A HREF="#sql_insert">sql_insert</A> 
+interrogates the server to find out the datatypes of the table columns.
+This profile is cached internally, in case the same table is inserted to
+again. See also the handle attributes <A HREF="#item_tables">tables</A>.
+
+
+<P>
+
+For string types, <A HREF="#sql_insert">sql_insert</A> will put quotes around the values (using
+<A HREF="#sql_string">sql_string</A>) when composing the INSERT statement. For binary datatypes,
+<A HREF="#sql_insert">sql_insert</A> will add add a leading <CODE>0x</CODE>, unless a <CODE>0x</CODE> is already there. 
+
+
+<P>
+
+<STRONG>Notes:</STRONG>
+
+
+
+
+<P>
+
+<UL>
+<LI><STRONG></STRONG>
+To pass NULL for a parameter, send <CODE>undef</CODE>. <A HREF="#sql_insert">sql_insert</A> does not consider the attribute <A HREF="././mssql-dblib.html#item_dbNullIsUndef">dbNullIsUndef</A>.
+
+
+<P>
+
+<LI><STRONG></STRONG>
+While <A HREF="#sql_insert">sql_insert</A> is convenient, be aware of that there is a considerable performane penalty
+for inserting data to SQL Server with bare SQL statments, and there is a
+lot to gain by using stored procedures.
+
+
+<P>
+
+</UL>
+<P>
+<HR>
+<H2><A NAME="sql_string">sql_string
+
+</A></H2>
+<PRE>    $string = [$X-&gt;]sql_string($string);
+</PRE>
+
+<P>
+
+<A HREF="#sql_string">sql_string</A> returns <CODE>$string</CODE> surrounded by single quotes, and any single
+quote in <CODE>$string</CODE> is doubled. If <CODE>$string</CODE> is <CODE>undef</CODE>, the string NULL (unquoted) is returned. Example:
+
+
+<P>
+
+<PRE>    print sql_string(&quot;This is Jim's house&quot;);
+    print sql_string;
+</PRE>
+
+<P>
+
+prints
+
+
+<P>
+
+<PRE>    'This is Jim''s house'
+    NULL
+</PRE>
+
+<P>
+
+If you provide a handle, it is not really used anyway.
+
+
+<P>
+
+<P>
+<HR>
+<H2><A NAME="Transaction_routines">Transaction routines
+
+</A></H2>
+<PRE>    [$X-&gt;]sql_begin_trans;
+    [$X-&gt;]sql_commit;
+    [$X-&gt;]sql_rollback;
+</PRE>
+
+<P>
+
+These are just a short way of saying
+
+
+<P>
+
+<PRE>    sql(&quot;BEGIN TRANSACTION&quot;);
+    sql(&quot;COMMIT TRANSACTION&quot;);
+    sql(&quot;ROLLBACK TRANSACTION&quot;);
+</PRE>
+
+<P>
+
+respectively.
+
+
+<P>
+
+<P>
+<HR>
+<H2><A NAME="sql_set_conversion">sql_set_conversion
+
+</A></H2>
+<PRE>    [$X-&gt;]sql_set_conversion([$client_cs [, $server_cs [, $direction]]]);
+</PRE>
+
+<P>
+
+<STRONG>sql_set_conversion</STRONG> establishes a character conversion between client and server and/or vice
+versa for the given handle. If you don't provide a handle, the conversion
+is established for the handle returned by the first call to <A HREF="#sql_init">sql_init</A>.
+
+
+<P>
+
+To start from the back, <STRONG>$direction</STRONG> specify in which direction you want the conversion to apply. There are
+three possible values:
+
+
+<P>
+
+<DL>
+<DT><STRONG><A NAME="item_TO_CLIENT_ONLY">TO_CLIENT_ONLY
+
+</A></STRONG><DD>
+Convert only data that comes back from the server.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_TO_SERVER_ONLY">TO_SERVER_ONLY
+
+</A></STRONG><DD>
+Convert only data that is sent to the server.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_TO_SERVER_CLIENT">TO_SERVER_CLIENT
+
+</A></STRONG><DD>
+Convert both when sending and receiving. This is the default.
+
+
+<P>
+
+</DL>
+<STRONG>$client_cs</STRONG> is the character set for the data on the client side, and
+<STRONG>$server_cs</STRONG> is the character set for the data on the server side. The chosen characters
+sets do not need to agree with the official character sets of the client or
+the server.
+
+
+<P>
+
+Specify the character sets as code pages, with or without the leading
+``CP''. For <CODE>$client_cs</CODE> you can also specify ``OEM'' or
+``ANSI'' to use the OEM or ANSI character set of the client. These are read
+from the key SYSTEM\CurrentControlSet\Control\Nls\CodePage in the
+HKEY_LOCAL_MACHINE hive. For the server character set, you can specify
+``iso_1'' as an alternative to ``CP1252'' to get Latin-1.
+
+
+<P>
+
+The default for <CODE>$client_cs</CODE> is the local OEM character set. The
+default for <CODE>$server_cs</CODE> is the character set of the server.
+(Use <EM>sp_helpsort</EM> to find out if you don't know.)
+
+
+<P>
+
+To set up conversion <A HREF="#sql_set_conversion">sql_set_conversion</A> looks in the SYSTEM32 directory of the NT installation as pointed to by the
+environment variable <EM>SystemRoot</EM>. In this directory it looks for the file <EM>SSSSCCCC</EM>.CPX and if this fails an attempt is made with <EM>CCCCSSSS</EM>.CPX . <EM>SSSS</EM> is the code-page number for the server character set, and <EM>CCCC</EM> is the code-page number for the client character set. For instance the file
+for converting to CP850 to Latin-1 (CP1252) is 12520850.CPX. If none of the
+files are found, execution is aborted.
+
+
+<P>
+
+<STRONG>Notes:</STRONG>
+
+
+
+
+<P>
+
+<UL>
+<LI><STRONG></STRONG>
+These character-set conversions typically are not fully round-trip. That
+is, if you convert one character from set to another and back, you may not
+have the same character you started with. This is because the character
+sets contain different characters, and if a character is missing in the
+target character set, it will be converted to some other character, for
+instance the most similar-looking character.
+
+
+<P>
+
+<LI><STRONG></STRONG>
+You may think that the idea of a unidirectional conversion is funny, but
+say that you have a table in which the data is the CP850 character set, and
+you want it to be in Latin-1. This could be simple way of doing it:
+
+
+<P>
+
+<PRE>    use MSSQL::Sqllib(:DEFAULT :directions)
+</PRE>
+
+<P>
+
+<PRE>    sql_init(undef, &quot;sa&quot;, &quot;&quot;, &quot;db&quot;);
+    sql_set_conversion(&quot;CP850&quot;, &quot;iso_1&quot;, TO_SERVER_ONLY);
+    @table = sql(&lt;&lt;SQLEND);
+       SELECT * INTO #tbl FROM tbl WHERE 1 = 0  -- Clone the table.
+       SELECT * FROM tbl
+    SQLEND
+    foreach $row (@table) {
+       sql_insert(&quot;#tbl&quot;, $row);
+    }
+    sql(&lt;&lt;SQLEND);
+       BEGIN TRANSCTION
+       DELETE tbl
+       INSERT tbl SELECT * FROM #tbl
+       COMMIT TRANSACTION
+    SQLEND
+</PRE>
+
+<P>
+
+Here we are converting the data as we send it back. Alternatively we could
+have said:
+
+
+<P>
+
+<PRE>    sql_set_conversion(&quot;ANSI&quot;, &quot;CP850&quot;, TO_CLIENT_ONLY);
+</PRE>
+
+<P>
+
+<LI><STRONG></STRONG>
+If the metadata names - names of tables, columns, stored procedures and
+their parameters - contain characters that are subject to conversion, these
+names are converted as well. Things <EM>may</EM> go well with bi-directional conversion. With uni-directional conversion you
+are likely to run into trouble, and with
+<A HREF="#sql_insert">sql_insert</A> and <A HREF="#sql_sp">sql_sp</A> you are almost bound to fail.
+
+
+<P>
+
+<LI><STRONG></STRONG>
+If you wish to have more specific conversion, for instance converting only
+some characters (something you may want to do when you have a mix of
+character sets in the database), compose your own CPX-file and put it in
+System32.
+
+
+<P>
+
+</UL>
+<STRONG>Rantings:</STRONG>
+
+
+
+
+<P>
+
+While these two points are more of the author ranting's over Microsoft's
+insufficient support in this area, you might still find useful technical
+information here.
+
+
+<P>
+
+<UL>
+<LI><STRONG></STRONG>
+Say that you compose files with stored procedures or some other data in a
+Windows editor such as Notepad, PFE, Textpad or anything <EM>but</EM> ISQL/W or Enterprise Manager. The data is Latin-1, but the Perl script is
+running in console more and its client set is the OEM set which might be
+CP850. Now, if your server is Latin-1, you don't have to bother about
+conversion, but if you server is talking CP850 you probably want a
+conversion. (One never knows, I've seen Latin-1 data stored in CP850
+servers.) Using DB-Library without MSSQL::Sqllib you wouldn't stand a
+chance to get a conversion in this case. ``Hey, both are OEM, why
+convert?'', DB-Library thinks. It will however convert the data if the
+ANSI/OEM flag in on (this is controlled in <EM>SQL Client Configuration
+Utility</EM>) when sending to a Latin-1 server - converting Latin-1 as if it was CP850.
+Bright guy.
+
+
+<P>
+
+<LI><STRONG></STRONG>
+If you composed your script or data files in <EM>ISQL/W</EM> or <EM>Enterprise
+Manager</EM> and then saved it to disk, you do now in fact have an OEM file, because
+these two tools <EM>unconditionally</EM> perform an ANSI/OEM conversion when reading and writing a file. So if you
+used any these tools to compose the files, you must activate conversion if
+you want to use MSSQL::Sqllib to load these files in a Latin-1 server, as
+MSSQL::Sqllib always turns off all DB-Library conversion.
+
+
+<P>
+
+The good news is that the Query Analyzer that comes with SQL Server 7,
+permits you choose how files are to be read and stored from disk.
+
+
+<P>
+
+</UL>
+<P>
+<HR>
+<H2><A NAME="sql_unset_conversion">sql_unset_conversion
+
+</A></H2>
+<PRE>    [$X-&gt;]sql_unset_conversion([$direction]);
+</PRE>
+
+<P>
+
+Removes any previous conversion in the given direction. If you leave out
+<CODE>$direction</CODE>, conversion is removed in both directions. See
+<A HREF="#sql_set_conversion">sql_set_conversion</A> for legal values of <CODE>$direction</CODE>.
+
+
+<P>
+
+If you don't provide a handle, the conversion is removed for the handle
+returned by the first call to <A HREF="#sql_init">sql_init</A>.
+
+
+<P>
+
+<P>
+<HR>
+<H2><A NAME="sql_message_handler">sql_message_handler
+
+</A></H2>
+This routine is not exported, and thus not available by itself outside
+MSSQL::Sqllib. However, as it is called time each time SQL Server sends a
+message back to the client, its doings will still be of interest to you.
+
+
+<P>
+
+The behaviour of <A HREF="#sql_message_handler">sql_message_handler</A> is determined by the handle attribute
+<A HREF="#errInfo">errInfo</A>, a hash which is described in detail separately in its own section. Here I
+describe how <A HREF="#sql_message_handler">sql_message_handler</A> behaves with the default values of 
+<A HREF="#errInfo">errInfo</A> in force.
+
+
+<P>
+
+If the severity of the SQL Server message is &gt; 10, <A HREF="#sql_message_handler">sql_message_handler</A>
+will set the <A HREF="#item_dieFlag">dieFlag</A> element of the <A HREF="#errInfo">errInfo</A> hash. If DB-Library was called from within MSSQL::Sqllib, the calling
+routine will then terminate execution. If you called DB-Library outside of
+MSSQL::Sqllib, you need to look at <A HREF="#item_dieFlag">dieFlag</A> yourself.
+
+
+<P>
+
+This behaviour can be altered with the <A HREF="#errInfo">errInfo</A> elements <A HREF="#item_maxSeverity">maxSeverity</A>,
+<A HREF="#item_alwaysStopOn">alwaysStopOn</A> and <A HREF="#item_neverStopOn">neverStopOn</A>. They permit you to choose a different permitted severity level, and to
+specify exceptions for specific errors.
+
+
+<P>
+
+The message handler will also in its default configuration print a message
+to STDERR. Here is a sample:
+
+
+<P>
+
+<PRE>    SQL Server message 411, Severity 16, State 2, Server SOMMERSKOV
+    Line 1
+    Compute clause #2, aggregate expression #1 is not in the select list.
+        1&gt; SELECT  dbid, segmap, lstart, size, vstart FROM sysusages
+        2&gt; ORDER   BY dbid, segmap
+        3&gt; COMPUTE sum(size) BY dbid, segmap
+        4&gt; COMPUTE sum(2 * size) BY dbid
+        5&gt; COMPUTE sum(size)
+</PRE>
+
+<P>
+
+Thus, you get both the error text as well as the code that caused the
+error. 
+
+
+<P>
+
+If severity is 0 only the text part is printed. (That is <EM>Compute clause...</EM>
+in the example above.)
+
+
+<P>
+
+Two messages are suppressed completely: the messages <EM>Changed database context...</EM> 
+and <EM>Changed language setting...</EM> On the other hand, the messages about arithmetic overflow and division by
+zero are printed in full, even if they have severity 0.
+
+
+<P>
+
+You can change what is being printed with the <A HREF="#errInfo">errInfo</A> elements
+<A HREF="#item_printMsg">printMsg</A>, <A HREF="#item_printLines">printLines</A>, <A HREF="#item_printText">printText</A>, <A HREF="#item_neverPrint">neverPrint</A> and <A HREF="#item_alwaysPrint">alwaysPrint</A>.
+
+
+<P>
+
+<P>
+<HR>
+<H2><A NAME="sql_error_handler">sql_error_handler
+
+</A></H2>
+Just like <A HREF="#sql_message_handler">sql_message_handler</A> this routine is not exported, but you can control its behaviour by means of <A HREF="#errInfo">errInfo</A>. Here follows a description of the default behaviour and a brief coverage
+of the control possibilities.
+
+
+<P>
+
+<A HREF="#sql_error_handler">sql_error_handler</A> is called when DB-Library generates a message. If the message has a
+severity level &gt; 1, <A HREF="#sql_error_handler">sql_error_handler</A> will set <A HREF="#item_dieFlag">dieFlag</A>, and if DB-Library was called from MSSQL::DBlib, the execution will be
+aborted. However, the error <EM>General SQL Server error...</EM> is ignored, as this always is accompanied with a SQL Server error handled
+by <A HREF="#sql_message_handler">sql_message_handler</A>.
+
+
+<P>
+
+You can override this behaviour with the <A HREF="#errInfo">errInfo</A> elements <A HREF="#item_maxLibSeverity">maxLibSeverity</A>,
+<A HREF="#item_neverStopOn">neverStopOn</A> and <A HREF="#item_alwaysStopOn">alwaysStopOn</A>.
+
+
+<P>
+
+<A HREF="#sql_error_hanlder">sql_error_hanlder</A> prints all messages it receives, with the exception of the aforementioned <EM>General SQL Server error...</EM> You can override this with the <A HREF="#errInfo">errInfo</A> element <A HREF="#item_neverPrint">neverPrint</A>.
+
+
+<P>
+
+<P>
+<HR>
+<H1><A NAME="HANDLE_ATTRIBUTES">HANDLE ATTRIBUTES
+
+</A></H1>
+The attributes of MSSQL::DBlib is available with MSSQL::Sqllib as well. See
+the section <A HREF="././mssql-dblib.html#Handle_Attributes">Handle Attributes</A> in the MSSQL::DBlib doc for inforamtion on these attributes. 
+
+
+<P>
+
+Here are the attributes specific to MSSQL::Sqllib.
+
+
+<P>
+
+<P>
+<HR>
+<H2><A NAME="Misc_attributes">Misc attributes
+
+</A></H2>
+<DL>
+<DT><STRONG><A NAME="item_logHandle">logHandle
+
+</A></STRONG><DD>
+When defined this should be an open filehandle to which all code you pass
+to
+<A HREF="#sql">sql</A> and <A HREF="#sql_one">sql_one</A> is written, as well as the code generated by
+<A HREF="#sql_insert">sql_insert</A> and <A HREF="#sql_sp">sql_sp</A>.
+
+
+<P>
+
+The code is written after any client-to-server character-set conversion has
+been applied.
+
+
+<P>
+
+Note that for <A HREF="#sql_sp">sql_sp</A> what you get is actually fake. <A HREF="#sql_sp">sql_sp</A> uses RPC calls, so the EXEC statement you get in the log has never been
+executed. It is nevertheless accurate, except that OUTPUT parameters are
+not marked as such.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_noExec">noExec
+
+</A></STRONG><DD>
+Tells MSSQL::Sqllib to not execute the code it gets. This is useful in
+combination with <A HREF="#item_logHandle">logHandle</A> if all you want to do is to generate a script that is to be run by <STRONG>isql</STRONG> later. (If you are considering to use ISQL/W, you probably want to convert
+to OEM, see the rantings at the end of the section for <A HREF="#sql_set_conversion">sql_set_conversion</A>.)
+
+
+<P>
+
+Note that you still need to log into the server to use <A HREF="#item_noExec">noExec</A>, and
+<A HREF="#sql_insert">sql_insert</A> and <A HREF="#sql_sp">sql_sp</A> will still call the server to retrieve information on table and procedures.
+Also <A HREF="#sql_set_conversion">sql_set_conversion</A> may call the server.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_procs">procs
+
+</A></STRONG><DD>
+This is a hash that <A HREF="#sql_sp">sql_sp</A> uses to cache parameter profiles. Normally you have no reason to fiddle
+with this attribute, but if you have reason to believe that a stored
+procedure has changed interface, since the last time you called
+<A HREF="#sql_sp">sql_sp</A>, you can delete the SP from <A HREF="#item_procs">procs</A>.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_tables">tables
+
+</A></STRONG><DD>
+This is a hash that <A HREF="#sql_insert">sql_insert</A> uses to cache table definitions. Normally you have no reason to fiddle with
+this attribute, but if you have reason to believe that a table has changed,
+since the last time you called <A HREF="#sql_insert">sql_insert</A>, you can delete the table from <A HREF="#item_tables">tables</A>.
+
+
+<P>
+
+</DL>
+<P>
+<HR>
+<H2><A NAME="errInfo">errInfo
+
+</A></H2>
+This attribute is a hash whose components are used by <A HREF="#sql_message_handler">sql_message_handler</A>, 
+<A HREF="#sql_error_handler">sql_error_handler</A> and <A HREF="#sql_sp">sql_sp</A> to determine whether to abort execution, what and when to print and whether
+to return error messages to the caller. Some of the components are arrays
+and hashes themselves. A pseudo-code declaration with default values of <A HREF="#errInfo">errInfo</A> looks like this:
+
+
+<P>
+
+<PRE>      RECORD errInfo 
+          -- Abort control for sql_message_handler and sql_error_handler
+          dieFlag        flag;
+          maxSeverity    integer = 10;
+          maxLibSeverity integer = 1;
+          neverStopOn    HASH OF flags = {'-10007' =&gt; 1};
+          alwaysStopOn   HASH OF flags = undef;
+</PRE>
+
+<P>
+
+<PRE>          -- Print control for sql_messsage_handler and sql_error_handler
+          printMsg     integer = 1;
+          printText    integer = 0;
+          printLines   integer = 11;
+          neverPrint   HASH OF flags = {'5701' =&gt; 1, '5703' =&gt; 1, '-10007' =&gt; 1}
+          alwaysPrint  HASH OF flags = {'3606' =&gt; 1, '3607' =&gt; 1}
+</PRE>
+
+<P>
+
+<PRE>          -- Abort control for sql_sp
+          checkRetStat flag = 1;
+          retStatOK    HASH OF flags = undef;
+</PRE>
+
+<P>
+
+<PRE>          -- Return error messages to caller
+          saveMessages flag = 0;  
+          messages     ARRAY OF RECORD
+                          state     integer;
+                          errno     integer;
+                          severity  integer;
+                          text      string;
+                          proc      string;
+                          line      string;
+                          oserr     integer;
+                          oserrtext string;
+                       END
+      END
+</PRE>
+
+<P>
+
+In actual Perl code you would refer to an element in the <A HREF="#item_messages">messages</A> array like this:
+
+
+<P>
+
+<PRE>      $X-&gt;{errInfo}{'messages'}[0]{'errno'}
+</PRE>
+
+<P>
+
+This should give a clue on how to refer the other elements or <A HREF="#errInfo">errInfo</A> as well.
+
+
+<P>
+
+Notice that you cannot use <A HREF="#errInfo">errInfo</A> to control the behaviour during <A HREF="#sql_init">sql_init</A>.
+
+
+<P>
+
+<DL>
+<DT><STRONG><A NAME="item_dieFlag">dieFlag
+
+</A></STRONG><DD>
+This is a read-only flag set by <A HREF="#sql_message_handler">sql_message_handler</A> or 
+<A HREF="#sql_error_handler">sql_error_handler</A>, suggesting the caller that execution is to be aborted. If the caller is a
+routine in MSSQL::Sqllib, the advice is followed.
+
+
+<P>
+
+MSSQL::Sqllib does not care about return status from DB-Library calls, but
+rely exclusively on <A HREF="#item_dieFlag">dieFlag</A>. As long as you only call MSSQL::Sqllib you have no reason to care about
+this flag. If you call MSSQL::DBlib directly, but still rely on the
+handlers in MSSQL::Sqllib, you can use <A HREF="#item_dieFlag">dieFlag</A> to determine whether to abort execution.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_maxSeverity">maxSeverity
+
+</A></STRONG><DD>
+The highest permitted severity level of messages from SQL Server. 
+<A HREF="#sql_message_handler">sql_message_handler</A> will set the <A HREF="#item_dieFlag">dieFlag</A> when receiving messsages with severity above <A HREF="#item_maxSeverity">maxSeverity</A>. See also <A HREF="#item_neverStopOn">neverStopOn</A> and <A HREF="#item_alwaysStopOn">alwaysStopOn</A>. Default: <STRONG>10</STRONG>.
+
+
+<P>
+
+Note: it appears that SQL Server sends no messages with severities between
+1 and 10, but in this case 0 is always used.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_maxLibSeverity">maxLibSeverity
+
+</A></STRONG><DD>
+The highest permitted severity level of messages from DB-Library. 
+<A HREF="#sql_error_handler">sql_error_handler</A> will set the <A HREF="#item_dieFlag">dieFlag</A> when receiving messsages with severity above <A HREF="#item_maxLibSeverity">maxLibSeverity</A>. See also <A HREF="#item_neverStopOn">neverStopOn</A> and <A HREF="#item_alwaysStopOn">alwaysStopOn</A>
+below. Default: <STRONG>1</STRONG> (= EXINFO).
+
+
+<P>
+
+Constants for DB-Library severities are defined in
+MSSQL::DBlib::Consts::Severity.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_neverStopOn">neverStopOn
+
+</A></STRONG><DD>
+This is a hash with error numbers as keys. <A HREF="#sql_message_handler">sql_message_handler</A> will never set <A HREF="#item_dieFlag">dieFlag</A> for an error if <A HREF="#item_neverStopOn">neverStopOn</A>{$msgno} is set. For DB-Library errors, the error numbers are negated. Thus
+if <A HREF="#item_neverStopOn">neverStopOn</A>{-$dberr} is set, 
+<A HREF="#sql_error_handler">sql_error_handler</A> will not set <A HREF="#item_dieFlag">dieFlag</A>. <A HREF="#item_neverStopOn">neverStopOn</A> overrides
+<A HREF="#item_maxSeverity">maxSeverity</A> and <A HREF="#item_maxLibSeverity">maxLibSeverity</A>.
+
+
+<P>
+
+Constants for DB-Library errors are defined in
+MSSQL::DBlib::Consts::Errors. If follows from the above that you must say:
+
+
+<P>
+
+<PRE>    $sql-&gt;{errInfo}{neverStopOn}{-SQLECOFL()}
+</PRE>
+
+<P>
+
+to prevent the error <EM>Data conversion resulted in overflow</EM> causing <A HREF="#item_dieFlag">dieFlag</A>
+to be set. (You must inclued the parentheses, or else Perl will interpret 
+<CODE>-SQLECOFL</CODE> as a bareword.)
+
+
+<P>
+
+By default, <A HREF="#item_neverStopOn">neverStopOn</A> includes one entry -10007 (-SQLEMSG). DB-Library error 10007 is <EM>General SQL Server error: Check messages from SQL server</EM>. This message is generated when SQL Server generates a messages with
+severity 11 or higher. As <A HREF="#sql_message_handler">sql_message_handler</A> takes care of these errors, 10007 is exempted from handling in <A HREF="#sql_error_handler">sql_error_handler</A> for your convenience.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_alwaysStopOn">alwaysStopOn
+
+</A></STRONG><DD>
+This is a hash with error numbers as keys. <A HREF="#sql_message_handler">sql_message_handler</A> will always set <A HREF="#item_dieFlag">dieFlag</A> for an error if <A HREF="#item_alwaysStopOn">alwaysStopOn</A>{$msgno} is set. For DB-Library errors, the error numbers are negated. Thus
+if <A HREF="#item_alwaysStopOn">alwaysStopOn</A>{-$dberr} is set, 
+<A HREF="#sql_error_handler">sql_error_handler</A> will set <A HREF="#item_dieFlag">dieFlag</A>. <A HREF="#item_alwaysStopOn">alwaysStopOn</A> overrides <A HREF="#item_maxSeverity">maxSeverity</A> 
+and <A HREF="#item_maxLibSeverity">maxLibSeverity</A>.
+
+
+<P>
+
+Empty by default.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_printMsg">printMsg
+
+</A></STRONG><DD>
+Controls whether the message information from SQL Server is to be printed
+by
+<A HREF="#sql_message_handler">sql_message_handler</A>. That is, this part:
+
+
+<P>
+
+<PRE>    SQL Server message 411, Severity 16, State 2, Server SOMMERSKOV
+    Line 1
+</PRE>
+
+<P>
+
+The value of <A HREF="#item_printMsg">printMsg</A> relates to a severity level, so that messages from this severity and higher
+are printed. Default is <STRONG>1</STRONG>, the message information are printed for all messages but PRINT statments,
+SHOWPLAN, DBCC information and alike.
+
+
+<P>
+
+See also <A HREF="#item_neverPrint">neverPrint</A> and <A HREF="#item_alwaysPrint">alwaysPrint</A>.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_printText">printText
+
+</A></STRONG><DD>
+Controls whether the text portion of an SQL messages. The value of
+<A HREF="#item_printText">printText</A> relates to a severity level, so that messages from this severity and higher
+are printed. Default is 0, that is the text of all messages are printed.
+However. blank lines are never printed.
+
+
+<P>
+
+See also <A HREF="#item_neverPrint">neverPrint</A> and <A HREF="#item_alwaysPrint">alwaysPrint</A>.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_printLines">printLines
+
+</A></STRONG><DD>
+Controls whether <A HREF="#sql_message_handler">sql_message_handler</A> is to print the lines of the offending SQL. The value of <A HREF="#item_printLines">printLines</A> relates to a severity level, so that command lines from this severity and
+higher are printed. The default is <STRONG>11</STRONG>, the lowest level for error messages.
+
+
+<P>
+
+See also <A HREF="#item_neverPrint">neverPrint</A> and <A HREF="#item_alwaysPrint">alwaysPrint</A>.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_neverPrint">neverPrint
+
+</A></STRONG><DD>
+This is a hash with error numbers as keys. If <A HREF="#item_neverPrint">neverPrint</A>{$msgno} has a true value, <A HREF="#sql_message_handler">sql_message_handler</A> will print no part of the message regardless of <A HREF="#item_printMsg">printMsg</A>, <A HREF="#item_printText">printText</A> and <A HREF="#item_printLines">printLines</A>. 
+
+
+<P>
+
+Likewise <A HREF="#sql_error_handler">sql_error_handler</A> will not print a messages if <A HREF="#item_neverPrint">neverPrint</A>{-$dberr} is set. That is, DB-Library error codes should appear with a
+negative value.
+
+
+<P>
+
+By default the following entires are set: 5701, 5703 and -10007. 5701 is 
+<EM>Changed database context...</EM> and 5703 is <EM>Changed language setting...</EM>. These messages are generated on every login, and you rarely want to see
+them. See <A HREF="#item_neverStopOn">neverStopOn</A> for a discussion on DB-Library message 10007.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_alwaysPrint">alwaysPrint
+
+</A></STRONG><DD>
+This is a hash with error numbers as keys. If <A HREF="#item_alwaysPrint">alwaysPrint</A>{$errno} has a true value, <A HREF="#sql_message_handler">sql_message_handler</A> will print all parts of the message regardless of <A HREF="#item_printMsg">printMsg</A>, <A HREF="#item_printText">printText</A> and <A HREF="#item_printLines">printLines</A>. By the default the messages 3606 and 3607 are flagged. 3606 is <EM>Arithmetic overflow
+occurred</EM> and 3607 is <EM>Division by zero occurred</EM>. These are raised with severity 0 if you have set none of ARITHABORT or
+ARITHIGNORE ON. At least this SQL programmer feels that he wants to know on
+where the problem occurred, even if he didn't think of setting ARITHABORT.
+
+
+<P>
+
+This hash is not applicable to <A HREF="#sql_error_handler">sql_error_handler</A>.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_checkRetStat">checkRetStat
+
+</A></STRONG><DD>
+Determines whether <A HREF="#sql_sp">sql_sp</A> is to check return status of the stored procedures it calls. The default it
+is <STRONG>1</STRONG>. Unset it, to have <A HREF="#sql_sp">sql_sp</A> to permit any return values.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_retStatOK">retStatOK
+
+</A></STRONG><DD>
+This is a hash with permissible return values as keys. The values of the
+keys must have a true values. For instance if you say
+
+
+<P>
+
+<PRE>    $X-&gt;{errInfo}{retStatOK}{'4711'}++;
+</PRE>
+
+<P>
+
+<A HREF="#sql_sp">sql_sp</A> will accept 4711 as a return status without aborting even when <A HREF="#item_checkRetStat">checkRetStat</A> is in effect. Default: empty.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_saveMessages">saveMessages
+
+</A></STRONG><DD>
+If you set this flag, <A HREF="#sql_message_handler">sql_message_handler</A> will save the messages from SQL Server in the array <A HREF="#item_messages">messages</A>. By default this flag is off.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_messages">messages
+
+</A></STRONG><DD>
+This is an array of hashes, each hash containing one message, using the
+following keys:
+
+
+<P>
+
+<PRE>    state     - the state of the messages. -1 means that the message 
+                comes from DB-Library.
+    errno     - the number of the SQL message or the DB-Library message. 
+                (No negation of DB-Library error numbers are performed.)
+    severity  - the severity of the message.
+    text      - the text of the message.
+    proc      - the procedure involved in the error.
+    line      - the number of the line in the procedure/batch in which 
+                the error occurred.
+    oserr     - error code from the operating system, only applicable to 
+                certain DB-Library errors.
+    oserrtext - error text accompanying oserr, if any.
+</PRE>
+
+<P>
+
+The hashes are added at the end of the array by <A HREF="#sql_message_handler">sql_message_handler</A> and
+<A HREF="#sql_error_handler">sql_error_handler</A> when <A HREF="#item_saveMessages">saveMessages</A> is set. No routine in MSSQL::Sqllib ever deletes anything from <A HREF="#item_messages">messages</A>.
+
+
+<P>
+
+</DL>
+<P>
+<HR>
+<H1><A NAME="SQL_Server_7_issues">SQL Server 7 issues
+
+</A></H1>
+The following restrictions apply for the novelties in SQL Server 7 when
+using
+<A HREF="#sql">sql</A>, <A HREF="#sql_one">sql_one</A> and <A HREF="#sql_sp">sql_sp</A>.
+
+
+<P>
+
+<STRONG>Disclaimer:</STRONG> This is what I am aware of. There might be more.
+
+
+<P>
+
+<DL>
+<DT><STRONG><A NAME="item_bit">bit
+
+</A></STRONG><DD>
+SQL Server 7 supports nullable bit columns. If you retrieve a bit value
+with the value NULL, it will appear as 0 in MSSQL::DBlib, not as <CODE>undef</CODE>. The same applies if you attempt to pass <CODE>undef</CODE> for a bit parameter with <A HREF="#sql_sp">sql_sp</A>.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_char">char and varchar
+
+</A></STRONG><DD>
+SQL Server 7 supports char and varchar values up to a length of 8000. With
+MSSQL::Sqllib such values will be truncated after 255 characters, both in
+result sets, and when passing parameters with <A HREF="#sql_sp">sql_sp</A>.
+
+
+<P>
+
+SQL Server 7 supports varchar values of the empty string. These will appear
+as strings of one blank in MSSQL::Sqllib. If you attempt to pass the empty
+string as a parameter value, it will be converted to one blank before being
+passed to SQL Server.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_nchar">nchar and nvarchar
+
+</A></STRONG><DD>
+The same length restrictions as for char and varchar apply. Characters
+outside the range of 0-255 are converted to some fallback character by SQL
+Server.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_ntext">ntext
+
+</A></STRONG><DD>
+This datatype is not supported at all. SQL Server 7 refuses to return ntext
+values to legacy clients such as DB-Library.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_binary">binary and varbinary
+
+</A></STRONG><DD>
+Restrictions analogous to those for char and varchar apply.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_uniqueidentifier">uniqueidentifier
+
+</A></STRONG><DD>
+When you retrieve such a value in a result set, you will receive the value
+in a hex string where the bytes have been tossed around. You can use the
+MSSQL::DBlib function <A HREF="#reformat_uniqueid">reformat_uniqueid</A> to get a properly formatted GUID string.
+
+
+<P>
+
+You can however successfully pass a regular GUID string (e.g.
+``7223C906-2CF2-11D0-AFB8-00A024A82C78'' to a uniqueidentifier parameter,
+and you can also retrieve a properly formatted GUID string back from an
+OUTPUT parameter.
+
+
+<P>
+
+</DL>
+<P>
+<HR>
+<H1><A NAME="ACKNOWLEDGEMENTS">ACKNOWLEDGEMENTS
+
+</A></H1>
+Michael Peppler included the <CODE>&sql</CODE> routine in his Sybperl, a
+contribution he credits to Gisele Aas. This was the feather from which the
+Sqllib bird was born.
+
+
+<P>
+
+<P>
+<HR>
+<H1><A NAME="AUTHOR">AUTHOR
+
+</A></H1>
+Erland Sommarskog  &lt;<EM>sommar@algonet.se</EM>&gt;.
+
+<P>
+
+</DL>
+    </BODY>
+
+    </HTML>

@@ -1,0 +1,9 @@
+sqllib.pm
+MANIFEST
+makefile.pl
+t/1_resultsets.t      Test of results sets in all combinations, and use of NULL.
+t/2_sptest.t          Test of stored procedures, of datatypes and odd MSSQL::DBlib flags.
+t/3_conversion.t      Test of character-set conversion.
+t/4_errors.t          Test of error handling.
+t/5_uniqueid.t        Test of the SQL7 datatype uniqueidentifier.
+t/sqllogin.pl         File with username, password and server used by test scripts.

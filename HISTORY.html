@@ -1,0 +1,131 @@
+<HTML>
+<HEAD>
+<TITLE>History MSSQL modules</TITLE>
+</HEAD>
+<BODY>
+<BODY>
+<CENTER>
+<H1>History MSSQL modules</H1>
+</CENTER>
+<H3>990201</H3>
+MSSQL::DBlib 1.005 and MSSQL::Sqllib 1.005 released.
+<H4>General news</H4>
+<UL>
+   <LI>Now supports all known Perl versions from 5.003 and on.
+   </LI>
+   <LI>Added information about SQL Server 7 to the docs.
+   </LI>
+</UL>
+<H4>News for MSSQL::DBlib</H4>
+<UL>
+   <LI>New functions:
+       <A HREF="docs/mssql-dblib.html#dbsqlsend">dbsqlsend</A>,
+       <A HREF="docs/mssql-dblib.html#dbsqlok">dbsqlok</A>,
+       <A HREF="docs/mssql-dblib.html#dbdataready">dbdataready</A>,
+       <A HREF="docs/mssql-dblib.html#dbclrbuf">dbclrbuf</A>,
+       <A HREF="docs/mssql-dblib.html#dbnextrow2">dbnextrow2</A>,
+       <A HREF="docs/mssql-dblib.html#reformat_uniqueid">reformat_uniqueid</A> and
+       <A HREF="docs/mssql-dblib.html#dbretdata2">dbretdata2</A>.</LI>
+   </LI>
+   <LI>Changed functions:
+   <UL>
+       <LI> <A HREF="docs/mssql-dblib.html#dbrpcsend">dbrpcsend</A> now has an
+             optional parameter to specify that dbrpcsend should not wait for
+             server response. dbrpcsend also provides wee support for the new
+             SQL Server datatype <I>uniqueidentifier</I>.
+       </LI>
+       <LI><A HREF="docs/mssql-dblib.html#dbnextrow">dbnextrow</A> and
+           <A HREF="docs/mssql-dblib.html#dbretdata">dbretdata</A> now have a
+           parameter to specify that the result should returned as a reference.
+       </LI>
+       <LI><A HREF="docs/mssql-dblib.html#dberrhandle">dberrhandle</A> and
+           <A HREF="docs/mssql-dblib.html#dbmsghandle">dbmsghandle</A> now warns if
+           you pass name without module qualifications is warnings are activated.
+       </LI>
+   </UL>
+   </LI>
+   <LI>Deprecated functions in MSSQL::DBlib:
+       <A HREF="docs/mssql-dblib.html#dbnextrow">dbnextrow</A> and
+       <A HREF="docs/mssql-dblib.html#dbretdata">dbretdata</A> are now deprecated in
+       favour of <A HREF="docs/mssql-dblib.html#dbnextrow2">dbnextrow2</A> and
+       <A HREF="docs/mssql-dblib.html#dbretdata2">dbretdata2</A>.
+   </LI>
+   <LI>The DLL is now linked at a non-default base address to improve startup time
+       somewhat.
+   </LI>
+   <LI>A couple of minor fixes with regards to error checking, uninialized values
+       and similar.
+   </LI>
+</UL>
+<H4>News for MSSQL::DBlib::Const</H4>
+<UL>
+   <LI>New constant in MSSQL::DBlib::Const::Datatypes: SQLUNIQUEIDENTIFIER.
+   </LI>
+   <LI>Warning about redefinition in MSSQL::DBlib::Const now suppressed.
+   </LI>
+   <LI>Fixed error in export list for MSSQL::DBlib::Const which prevented the
+       re-export of all MSSQL::DBlib::Const::* modules that ended in "s" -
+       about half of the modules.
+</UL>
+<H4>News for MSSQL::Sqllib</H4>
+<UL>
+    <LI>New result style <A HREF="docs/mssql-sqllib.html#item_KEYED">KEYED</A> for
+        <A HREF="docs/mssql-sqllib.html#sql">sql</A> and
+        <A HREF="docs/mssql-sqllib.html#sql_sp">sql_sp</A> which permits you to
+        retrieve a result set as a hash keyed by the key columns of the result set.
+    </LI>
+    <LI>The handle attribute <A HREF="docs/mssql-sqllib.html#errInfo">errInfo</A> has
+        several changes:
+        <UL>
+            <LI>You can now specify per message nummer whether it is to be printed.
+            </LI>
+            <LI>By default all informational messages are now printed, save two
+                login messages. The messages for arthimetic overflow and divizion by
+                zero are printed with line number, procedure and SQL code. In MSSQL
+                1.000 these messages was errnoneously suppressed.
+            </LI>
+            <LI>You can now also control
+                 <A HREF="docs/mssql-sqllib.html#sql_error_handler">sql_error_handler</A>
+                 with the <A HREF="docs/mssql-sqllib.html#errInfo">errInfo</A> attribute.
+            </LI>
+            <LI>The element <I>showplan</I> has been removed, being redundant with other
+                elements.
+            </LI>
+         </UL>
+     </LI>
+     <LI>New handle attributes <A HREF="docs/mssql-sqllib.html#item_procs">procs</A> and
+         <A HREF="docs/mssql-sqllib.html#item_tables">tables</A> which are used by
+         <A HREF="docs/mssql-sqllib.html#sql_sp">sql_sp</A> and
+         <A HREF="docs/mssql-sqllib.html#sql_insert">sql_insert</A> respectively
+         for caching information on stored procedures and tables.
+     </LI>
+     <LI>Using <KBD>-w</KBD>, MSSQL::Sqllib 1.000 would generate many warnings about
+         use of unitialized values. This has been fixed. Also, MSSQL::Sqllib has
+         more strict definitions how to handle empty result sets with various
+         result styles.
+     </LI>
+     <LI>The function <A HREF="docs/mssql-sqllib.html#sql_unset_conversion">
+         sql_unset_conversion</A> was accidently missing from the export list in
+         MSSQL::Sqllib. This has been fixed.
+     </LI>
+     <LI><A HREF="docs/mssql-sqllib.html#sql_set_conversion">sql_set_conversion</A>
+         was not able to find the default server charset, if the current database
+         was not master.
+     </LI>
+     <LI>A few more buglet fixes that I don't detail here.
+     </LI>
+</UL>
+<H3>980212</H3>
+Fix release: the script name was incorrectly analysed at startup,
+which could give "Name too long for loginrec field." Hopefully
+this solves problems with using MSSQL::* with IIS.
+
+<H3>980201</H3>
+Initial release for ActiveState Perl only.
+</HTML>
+<P>
+<HR>
+<I>
+Last updated <!--$$Modtime:--> 99-01-30 16:31 <!-- $-->
+</I>
+<BODY>

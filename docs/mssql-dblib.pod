@@ -1,0 +1,1365 @@
+$Header: /Perl/MSSQL/docs/mssql-dblib.pod 2     99-01-30 16:52 Sommar $
+
+$History: mssql-dblib.pod $
+# 
+# *****************  Version 2  *****************
+# User: Sommar       Date: 99-01-30   Time: 16:52
+# Updated in $/Perl/MSSQL/docs
+# Updated for MSSQL 1.005.
+
+=pod
+
+=head1 NAME
+
+MSSQL::DBlib - Call DB-Library for Microsoft SQL Server from Perl
+
+=head1 SYNOPSIS
+
+   use MSSQL::DBlib;
+   use MSSQL::DBlib::Const;
+   or
+   use MSSQL::DBlib;
+   use MSSQL::DBlib::Const::General;
+   use MSSQL::DBlib::Const::Datatypes;
+   etc
+
+=head1 DESCRIPTION
+
+MSSQL::DBlib is an extension module to Perl (5.003 or higher) for
+calling I<Microsoft SQL Server> through I<DB-Library>. It is derived
+from Michael Peppler's I<Sybperl>. See the section L</Compatibility with
+Sybperl> if you are planning to use Sybperl scripts with MSSQL::DBlib.
+
+Several DB-Library calls use constants, for parameters or return values. You
+import these from the MSSQL::DBlib::Const::* modules. Either you C<use> the
+modules which hold the constants you need, or you C<use> MSSQL::DBlib::Const
+which gives you all of them. See the section L</MSSQL::DBlib::Const> below.
+
+MSSQL::DBlib has an heir module, MSSQL::Sqllib which reduces sending
+queries to SQL Server to one call, including error handling. See further
+L<mssql-sqllib>.
+
+=head1 MSSQL::DBlib
+
+A simple Perl script using MSSQL::DBlib could look like this:
+
+    use MSSQL::DBlib;
+
+    $dbh = MSSQL::DBlib->dblogin('sa', $pwd, $server, 'test_app');
+    $dbh->dbcmd("SELECT * FROM sysprocesses");
+    $dbh->dbsqlexec;
+    while ($dbh->dbresults != NO_MORE_RESULTS) {
+       while ($dbh->dbnextrow2($dataref) != NO_MORE_ROWS) {
+          ... do something with @$dataref ...
+       }
+    }
+
+Most of the routines in MSSQL::DBlib is accessed through a reference, and 
+are therefore not exported. Only the routines in the subsection L</Exported
+Routines> are exported.
+
+Many functions in MSSQL::DBlib return a status value. For most such routines 
+the only possible status values are SUCCEED and FAIL. When this is the
+case, I typically do not discuss on return-status values, but only in the 
+cases where there are more values available. Constants for the return values 
+are declared in MSSQL::DBlib::Const::General.
+
+This document describes the routines as they appear from Perl. In many cases, 
+they are simply passed on to DB-Library and the description on such routines 
+are often brief in this document. Please refer to the I<DB-Library for C> in 
+Books Online or in the printed documentation for complete information 
+on each routine.
+
+B<NOTE ON SQL Server 7:> With SQL Server 7, Microsoft has settled on not keeping
+DB-Library up in pace with the development of the server. For instance, new
+datatypes are not fully supported. It is inevitable that these restrictions
+apply to MSSQL::DBlib as well. These restrictions are discussed with the
+functions they apply to, as far as I am aware of them.
+
+=head2 Standard Routines
+
+=head3 dblogin dbopen
+
+    $dbh = MSSQL::DBlib->dblogin([$user [, $pwd [, $server [, $appname ]]]])
+    $dbh = MSSQL::DBlib->dbopen([$server [, $appname ]])
+
+Initiates a connection to SQL Server, using the supplied user, password,
+server and application name and returns a blessed reference to a hash, that
+includes a I<DBPROCESS> as well as other attributes. In this document I mainly
+refer to this reference as a I<handle>. The user-accessible attributes are
+described in the section L</Handle Attributes>.
+
+You can also set user, password and application name in advance with the
+L</DBSETLUSER>, L</DBSETLPWD> and L</DBSETLAPP> calls and leave these out when
+calling L</dblogin> or L</dbopen>. If you don't provide a server name,
+DB-Library will apply its defaults. To use integrated security, call 
+L</DBSETLSECURE> before calling L</dblogin> or L</dbopen>.
+
+L</dblogin> is somewhat confusing if you are acquainted with DB-Library for C.
+To wit, the real call to the DB-Library namesake is in fact performed when
+MSSQL::DBlib is bootstrapped, and L</dblogin> is really a call to DB-Library's
+I<dbopen> and the sole difference between MSSQL::DBlib's L</dblogin> and
+L</dbopen>, is that the latter takes fewer parameters.
+
+=head3 dbclose
+
+   $dbh->dbclose
+
+Close a connection while leaving the handle defined. Connections are
+automatically closed when a handle goes out of scope, so there is no urgent
+need to call this routine.
+
+=head3 dbdead DBDEAD
+
+    $is_dead = $dbh->dbdead
+    $is_dead = $dbh->DBDEAD
+
+Returns TRUE if the I<DBPROCESS> has been marked dead by DB-Library. (That
+is, your connection to the server is lost.)
+
+=head3 dbuse
+
+    $status = $dbh->dbuse($database)
+
+Make $database the current database.
+
+=head3 dbcmd
+
+   $status = $dbh->dbcmd($sql_cmd)
+
+Appends the string $sql_cmd to the current command buffer of this connection.
+
+=head3 dbfreebuf
+
+   $dbh->dbfreebuf
+
+Free the command buffer. Only needed if you have turned on the I<DBNOAUTOFREE>
+option.
+
+=head3 dbsqlexec
+
+   $status = $dbh->dbsqlexec
+
+Sends the content of the current command buffer to SQL Server for execution. 
+L</dbsqlexec> waits until it has received a response from the server, or a
+timeout elapses. If this is not feasable, use L</dbsqlsend> followed by L</dbsqlok>
+instead, and check whether a response is available with L</dbdataready>.
+
+=head3 dbsqlsend
+
+   $status = $dbh->dbsqlsend
+
+Sends the content of the current command buffer to SQL Server, but in
+difference to L</dbsqlexec>, L</dbsqlsend> does not wait for response from the
+server. You must call L</dbsqlok> to verify that the execution was successful,
+before you can start to process the result sets. To check whether there
+is any server response available, use L</dbdataready>.
+
+=head3 dbsqlok
+
+  $status = $dbh->sqlok
+
+Retrieves the result of a batch previously sent with L</dbsqlsend> or 
+L</dbrpcsend>(0). If no server response is available, L</dbsqlok> waits 
+until the server responds, or a timeout elapses.
+
+=head3 dbdataready
+
+  $boolean = $dbh->dataready
+
+Checks whether a response to a previous call to L</dbsqlsend> or L</dbrpcsend>(0)
+is available, and returns a true value if so, else a false value is returned.
+
+The DB-Library documentation is somewhat inconsistent, but it appears that it
+can be meaningful calling L</dbdataready> before calls L</dbresults> and 
+L</dbnextrow2> as well, as these function also waits until the server has 
+responded.
+
+Note that if there is a lock condition in SQL Server, L</dbdataready> will
+return a false value until the lock condition is resolved. If you use this
+function, you should probably have some timeout mechanism.
+
+=head3 dbresults
+
+   $status = $dbh->dbresults
+
+Makes the next result set of the query the current result set, from which
+L</dbnextrow2> will fetch rows. Call L</dbresults> after you have called 
+L</dbsqlexec>, L</dbsqlsend>/L</dbsqlok> or L</dbrpcsend>.
+
+L</dbresults> can return any of these four values: 
+
+B<SUCCEED>: result set was fetched successfully. 
+
+B<FAIL>: something went wrong. Note that you must continue to call C<dbresults>
+until it calls NO_MORE_RESULTS, or cancel the batch with L</dbcancel>.
+
+B<NO_MORE_RESULTS>: there are no further results sets to process. When 
+processing a query batch, you must call L</dbresults> until it returns 
+NO_MORE_RESULTS (or you cancel the batch with L</dbcancel>).
+
+
+B<NO_MORE_RPC_RESULTS>: there are no more results of this stored procedure, 
+but there were more stored procedures in the batch, of which the result sets 
+have not been processed. Applies only when you call stored procedures with 
+L</dbrpcparam>/L</dbrpcsend>.
+
+
+=head3 dbnextrow
+
+    @data    = $dbh->dbnextrow([0])
+    %data    = $dbh->dbnextrow(1)
+    $dataref = $dbh->dbnextrow($use_hash, 1)
+
+Get the next row from the current result set. If the second parameter $wantref 
+has a false value, the return value is a list of scalar values. If the first
+parameter $use_hash has a true value, the names of the columns are included
+in the list, so that you can receive the data into a hash. 
+
+When $wantref has a true value, a reference to an array or a hash is
+returned, depending on $use_hash.
+
+The return status from the DB-Library function I<dbnextrow> is available
+in $dbh->{DBstatus}.
+
+This function is deprecated and provided for compatibility only. It is implemented
+on top of L</dbnextrow2>, which is the preferred routine. See this routine for 
+further details.
+
+=head3 dbnextrow2
+
+   $status = $dbh->dbnextrow2($dataref[, $use_hash])
+
+Get the next row from the current result set and return the status from the
+DB-Library function I<dbnextrow>. On a successful fetch, the data in the row
+is available in $dataref. When a fetch fails (see possible status values below),
+$dataref will be C<undef>.
+
+$dataref is a reference to an array (when $use_hash has a false value or is 
+omitted) or a hash (when $use_hash has a true value). When returning an 
+array reference, the columns appear in the array, in the same order as they appear in 
+the query.
+
+When returning hash reference, the keys of the hash are the names of the columns 
+in the result set. If there are unnamed columns, L</dbnextrow2> will name them 
+"Col I<n>", where I<n> is the column number in the result set, starting on 1. 
+B<Beware!> If two columns in the result set have the same name, obviously there
+is only room for one of them in the hash. If warnings are activated, L</dbnextrow2> 
+will emit a warning if a name collision is detected.
+
+L</dbnextrow2> can return the following return values:
+
+B<REG_ROW:> A regular result row was returned.
+
+B<Any positive value:> The row was a COMPUTE row, and the return value is the
+compute id for that row. It appears that then when there are more than one
+COMPUTE BY clauses, that the innermost COMPUTE BY clause has number 1. The
+compute id is also available in the handle attribute C<ComputeID>.
+
+B<FAIL:> Something went wrong. Note that you must continue to call L</dbnextrow2>
+until it returns NO_MORE_ROWS, unless you cancel the query with L</dbcanquery>.
+
+B<NO_MORE_ROWS:> There were no more rows to fetch. You must call L</dbnextrow2>
+until you have fetched all row in the result (or cancel the query with 
+L</dbcanquery>).
+
+B<BUF_FULL:> The row buffer is full, and you must clear the buffer with 
+L</dbclrbuf>. This return value can only occur if you have set the DB-Library
+option DBBUFFER with L</dbsetopt>. See further the DB-Library documentation.
+
+An example with L</dbnextrow2> returning a hash:
+
+   $dbh->dbcmd("SELECT Name = name, Id = id FROM test_table");
+   $dbh->dbsqlexec; 
+   $dbh->dbresults;
+
+   while ($dbh->dbnextrow($dataref, 1) == NO_MORE_ROWS) {
+      print "$$dataref{Name} : $$dataref{Id}\n";
+   }
+
+This is how L</dbnextrow2> return the different datatypes:
+
+B<NULL:>  C<undef> or the string "NULL", depending on the handle attribute 
+C<dbNullIsUndef>. The default is to return NULL as C<undef>.
+
+B<int, smallint, tinyint, bit:>  As integers (default) or strings depending 
+on the handle attribute C<dbKeepNumeric>. Bit columns with the value NULL, are 
+returned as 0. (Nullable bit columns were an addition with SQL Server 7 and are
+not supported by DB-Library.)
+
+B<datetime, smalldatetime:>  As strings, formatted either by DB-Library, 
+or according to the handle attributes C<dateFormat> and C<msecFormat>. See 
+these attributes for details.
+
+B<float, real, numeric, decimal, money, smallmoney:>  As float values (default) 
+or strings, depending on the handle attribute C<dbKeepNumeric>.
+
+B<char, varchar, nchar, nvarchar:> As strings. Values longer than 255 chars (a
+novelty in SQL Server 7) are truncated to 255 characters due to limitations in 
+DB-Library. Varchar and nvarchar values of the empty string, will be received
+as a string of one space by DB-Library. In nchar and nvarchar strings, characters 
+with codes beyond the range of 0-255 are converted to some fallback character by 
+SQL Server.
+
+B<text:>  As strings. Truncation occurs if the length exceed what has 
+been specified with the SQL command SET TEXTSIZE or any of the DB-Library 
+options DBTEXTSIZE and DBTEXTLIMIT.
+
+B<ntext:>  This datatype is not supported at all with DB-Library, an attempt 
+to fetch such a column, will result in an error message from SQL Server.
+
+B<binary, varbinary, timestamp:>  As a hex strings, with or without a leading 
+0x, depending on the handle attribute C<dbBin0x>. 
+
+B<uniqueidentifier:>  Returned as a hex string, with or wihout a leading 0x. 
+The regular formatting for a GUID is missing, and several bytes are tossed around. 
+You can use the utility function L</reformat_uniqueid> to convert it to a proper 
+GUID string. 
+
+B<image:>  As a binary value, thus not a hex string. Same truncation rules 
+as for the text datatype.
+
+=head3 dbcancel
+
+   $status = $dbh->dbcancel
+
+Cancels the current command batch, discarding all results sets.
+
+=head3 dbcanquery
+
+   $status = $dbh->dbcanquery
+
+Cancels the current query within the currently executing command batch.
+There may still be further result sets to retrieve.
+
+=head3 dbclrbuf
+
+   $dbh->dbclrbuf($n)
+
+Clears $n rows from the row buffer. Row buffering only applies if you have set
+DB-Library option DBBBUFFER with L</dbsetopt>. Note that this function does 
+not return any value.
+
+=head3 DBCURCMD
+
+   $status = $dbh->DBCURCMD
+
+Returns the number of the currently executing command in the command
+batch. The first command is number 1.
+
+=head3 DBMORECMDS
+
+   $status = $dbh->DBMORECMDS
+
+Returns SUCCEED if there are additional commands to be executed in the
+current command batch.
+
+=head3 DBCMDROW
+
+    $status = $dbh->DBCMDROW
+
+Returns SUCCEED if the current command can return rows.
+
+=head3 DBROWS
+
+    $status = $dbh->DBROWS
+
+Returns SUCCEED if the current command did return rows.
+
+=head3 DBCOUNT
+
+    $count = $dbh->DBCOUNT
+
+Returns the number of rows that the current command affected. Notice
+that for a SELECT statement you will not get a correct answer from
+L</DBCOUNT> until you have retrieved all rows with L</dbnextrow2>.
+
+=head3 DBCURROW
+
+   $row_num = $dbh->DBCURROW
+
+Returns the number (counting from 1) of the currently retrieved row in
+the current result set.
+
+=head3 dbnumcols
+
+   $count = $dbh->dbnumcols
+
+How many columns there are in the current result set.
+
+=head3 dbcoltype
+
+    $type = $dbh->dbcoltype($colid)
+
+Returns the column type of column $colid in the current result set. Constants
+for the datatypes are declared in MSSQL::DBlib::Const::Datatypes.
+
+=head3 dbcollen
+
+    $len = $dbh->dbcollen($colid)
+
+Returns the maximum length (in bytes) of column $colid in the current result
+set.
+
+=head3 dbcolname
+
+   $string = $dbh->dbcolname($colid)
+
+Returns the name of column $colid in the current result set.
+
+=head3 dbstrcpy
+
+   $string = $dbh->dbstrcpy
+
+Returns the contents of the command buffer.
+
+=head3 dbsetopt
+
+   $status = $dbh->dbsetopt($opt [, $char_val])
+
+Sets option $opt with optional character parameter $char_val. $opt is one 
+of the option values defined in the DB-Library manual (e.g. DBSTAT,
+DBTEXTSIZE). To get IO statistics from the server on, you would say:
+
+    $dbh->dbsetopt(DBSTAT, "io");
+
+See also L</dbclropt> and L</dbisopt>. See F<eq\statistics.pl> for an example
+of using L</dbsetopt>.
+
+Constants for options are declared in MSSQL::DBlib::Const::Options.
+
+=head3 dbclropt
+
+    $ret = $dbh->dbclropt($opt [, $char_val])
+
+Unsets the option $opt, which might be on by default, or previously have been set 
+with L</dbsetopt>.
+
+=head3 dbisopt
+
+   $ret = $dbh->dbisopt($opt [, $char_val])
+
+Returns a true value if the option $opt is set.
+
+=head3 dbwritetext
+
+   $status = $dbh->dbwritetext($colname, $dbh_2, $colnum, $text [, $log])
+
+Inserts or updates data in a TEXT or IMAGE column. $colname is the
+name of the text column. $dbh_2 is the handle of another server
+connection, and which should have an active query against the table
+of the text column. $colnum is the number of the text column I<in
+that query> (thus, not in the table). $text is the text to be inserted.
+$log specifies whether the operation is to be logged or not. If
+you leave out $log, the operation is not logged. Note, however,
+that you must set the db option I<select into/bulk copy> to be able
+to use non-logged update.
+
+Example:
+
+   $dbh_2->dbcmd('SELECT txt, t_index FROM text_table WHERE t_index = 5');
+   $dbh_2->dbsqlexec; $dbh_2->dbresults;
+   $dbh_2->dbnextrow2($dataref);
+
+   $dbh->dbwritetext ("text_table.txt", $dbh_2, 1,
+                      "This is text added with MSSQL::DBlib");
+
+See also F<eq\wtext.pl> for a complete script.
+
+=head2 Exported Routines
+
+These are functions that has no connection with any DBPROCESS handle, but
+are exported from MSSQL::DBlib. All but C<reformat_uniqueid> are exported
+by default.
+
+=head3 dberrhandle
+
+    $old_handler = dberrhandle($err_handler)
+
+Installs an error handler and returns the previously installed handler. This 
+handler is called when an error occurs in DB-Library itself. To handle errors
+from SQL Server, see L</dbmsghandle>.
+
+$err_handler should be a reference to a Perl C<sub>, or a string containing
+the name of a Perl C<sub>. In the latter case, specify the name with the
+package component, for instance C<main::my_error_handler>. If you specify
+an unqualified name, and warnings are activated, L</dberrhandle> will print
+a warning. Unqualified name are deceivable, and does for instance not work
+when you are using the debugger.
+
+Pass C<undef> to only uninstall the current handler. 
+
+B<NOTE:> MSSQL::DBlib provides a built-in default error handler which applies 
+if you have not called L</dberrhandle> or uninstalled your own handler by passing
+C<undef>. 
+
+The error handler you specify should take six parameters:
+
+B<$dbproc>: This is a reference to a hash. The reference may or may not be
+blessed. When $dbproc is blessed, it is the handle you used for calling
+the routine that caused the error. When unblessed it is just a temporary handle,
+containing nothing but a DBPROCESS reference. Thus, if you want to retrieve
+any of the handle attributes, you first need to examine C<ref $dbproc>. 
+Don't attempt to call any DB-Library routines from the error handler, as they
+may lead to futher errors with new calls to the error handler and...
+
+B<$severity>: the severity level of the error. Constants for DB-Library severities
+are declared in MSSQL::DBlib::Const::Severity.
+
+B<$dberr>: a number identifying the error. Constants for DB-Library errors
+are declared in MSSQL::DBlib::Const::Errors.
+
+B<$oserr>: a number identifying any error from the OS or network level that
+may have occurred. When there is no such error, $oserr is DBNOERR, which is
+declared in MSSQL::DBlib::Const::General.
+
+B<$dberrstr>: a string describing the DB-Library error.
+
+B<$oserr>: a string describing any OS or network error.
+
+The error handler should return any of the values INT_EXIT (which causes
+DB-Library to exit and return an error status to the OS), INT_CANCEL (which
+causes the current DB-Library call to return FAIL) or INT_CONTINUE (which 
+is only meaningful for timeout errors). These constants are declared in
+MSSQL::DBlib::Const::General.
+
+=head3 dbmsghandle
+
+    $old_handler = dbmsghandle($msg_handler)
+
+Installs a message handler to take care of messages from SQL Server and
+returns the old handler. These messages can arise from server errors,
+RAISERROR or PRINT statements or be output caused by SET SHOWPLAN or SET
+STATISTICS.
+
+$msg_handler should be a reference to a Perl C<sub>, or a string containing
+the name of a Perl C<sub>. In the latter case, specify the name with the
+package component, for instance C<main::my_message_handler>. If you specify
+an unqualified name, and warnings are activated, L</dberrhandle> will print
+a warning. Unqualified name are deceivable, and does for instance not work
+when you are running the debugger.
+
+Pass C<undef> to uninstall the current handler.
+
+B<NOTE:> MSSQL::DBlib provides a built-in default message handler which applies 
+if you have not called L</dbmsghandle> or uninstalled your own handler by passing
+C<undef>. 
+
+The message handler you specify should take eight parameters:
+
+B<$dbproc>: This is a reference to a hash. The reference may or may not be
+blessed. When $dbproc is blessed, it is the handle you used to call the 
+routine that caused the error. When unblessed it is just a temporary handle,
+containing nothing but a DBPROCESS reference. Thus, if you want to
+retrieve any of the handle attributes, you first need to examine C<ref>
+$dbproc. Only when $dbproc is blessed you can call other MSSQL::DBlib
+routines, however you should be very restrictive with this, as stated in the
+DB-Library documentation.
+
+B<$msgno>: the error number from SQL Server. 0 when the message comes
+from a PRINT statement in Transact-SQL.
+
+B<$msgstate>: the state associated with the SQL Server message.
+
+B<$severity>: the severity level of the message. See the SQL Server
+documentation for details.
+
+B<$msgtext>: the text of the message from SQL Server.
+
+B<$server>: the name of the server that sent the message.
+
+B<$procname>: the name of the stored procedure that generated the message.
+C<undef> if there was no procedure involved.
+
+B<$line>: the line number in the stored procedure or batch where the message
+was generated.
+
+The message handler should return 0.
+
+See F<eg\statistics.pl> for an example of using a message handler that
+catches SHOW STATISTICS output.
+
+=head3 dbprtype
+
+   $str = dbprtype($typeid)
+
+Returns the textual representation of an SQL Server datatype such as SQLCHAR. 
+These are declared in MSSQL::DBlib::Const::Datatypes. You can retrieve the 
+datatype of a column with L</dbcoltype>.
+
+=head3 DBSETLAPP
+
+    $status = DBSETLAPP($appname)
+
+Sets the application name for connections created with subsequent calls to
+L</dblogin> or L</dbopen>. This name will appear with for instance I<sp_who>.
+The name provided with L</DBSETLAPP>, can be overridden by an explicit
+parameter to L</dblogin> or L</dbopen>.
+
+=head3 DBSETLHOST
+
+    $status = DBSETLHOST($hostname)
+
+Sets the host name for connections created with subsequent calls to L</dblogin>
+or L</dbopen>. This name will appear with for instance I<sp_who>.
+
+=head3 DBSETLFALLBACK
+
+      $status = DBSETLFALLBACK($onoff)
+
+Turns fallback support on or off for subsequent calls to L</dblogin> or
+L</dbopen>. $onoff should be any of the strings "ON" or "OFF". See Books 
+Online for further details on fallback.
+
+=head3 DBSETLNATLANG
+
+      $status = DBSETLNATLANG($language)
+
+Sets the national language for connections created with subsequent calls to
+L</dblogin> or L</dbopen>. Preferrably, the language should be installed on the
+SQL Server you are connecting to.
+
+=head3 DBSETLPACKET
+
+   $status = DBSETLPACKET($packet_size)
+
+Sets the packet size for the TDS protocol for connections created
+with subsequent calls to L</dblogin> or L</dbopen>.
+
+=head3 DBSETLPWD
+
+    $status = DBSETLPWD($pwd)
+
+Sets the password for subsequent calls to L</dblogin> or L</dbopen>.
+This parameter can be overridden by an explicit parameter to L</dblogin>.
+
+=head3 DBSETLSECURE
+
+   $status = DBSETLSECURE()
+
+Sets the secure connection flag for subsequent calls to L</dblogin> or
+L</dbopen>. This means that SQL Server will use integrated security for
+authentication, and that any provided username and password will be ignored.
+
+=head3 DBSETLTIME
+
+   $status = DBSETLTIME($seconds)
+
+Sets the time in seconds for how long MSSQL::DBlib is to wait when connecting 
+to the server with L</dblogin> or L</dbopen>. $seconds can also be any of the 
+constants described in the DB-Library documentation. These are declared in 
+MSSQL::DBlib::Const::Timeout.
+
+=head3 DBSETLUSER
+
+   DBSETLUSER($user)
+
+Sets the username for subsequent calls to L</dblogin> or L</dbopen>. This user name
+can be overridden by an explicit parameter to L</dblogin>.
+
+=head3 DBSETLVERSION
+
+     $status = DBSETLVERSION($version)
+
+Sets the DB-Library client behaviour to version 4.2 or 6.0 for connections
+created with subsequent calls to L</dblogin> or L</dbopen>. Use the constants
+DBVER60 or DBVER42. These are declared in MSSQL::DBlib::Const::DBSETLNAME.
+
+The choise of version applies to issues of which none concerns users of 
+MSSQL::DBlib: 1) the function I<dbcolinfo> which is not available in MSSQL::DBlib. 
+2) whether the datatypes decimal and numeric are converted to float or not 
+when returned to the client. MSSQL::DBlib converts numeric values to float 
+itself, so DB-Library's behaviour does not matter.
+
+=head3 DBGETTIME
+
+    $time = DBGETTIME()
+
+Returns the time MSSQL::DBlib waits for response from SQL Server.
+The timeout may be altered with L</DBSETLTIME> or L</dbsetlogintime>.
+
+=head3 dbsettime
+
+    $status = dbsettime($seconds)
+
+Sets the time MSSQL::DBlib is to wait for response from SQL Server when 
+calling L</dbsqlexec>, L</dbnextrow>, L</dbresults>, L</dbnextrow2> or L</dbrpcsend>.
+To set the timeout for L</dblogin>, use L</dbsetlogintime> or L</DBSETLTIME>.
+
+=head3 dbsetlogintime
+
+    $status = dbsetlogintime($seconds)
+
+With MSSQL::DBlib this routine is equvivalent to L</DBSETLTIME>, see this routine.
+
+=head3 dbexit
+
+     dbexit()
+
+Tell DB-Library that we're done. Once this call has been made, no
+further activity requiring DB-Library can be performed in the current
+program.
+
+B<NOTE:> do not call this routine, unless you have previously called L</dbclose>
+for all your handles that still are in scope. Else you will get an error
+message from DB-Library when the handles eventually goes out of scope,
+for instance when Perl exits.
+
+=head3 reformat_uniqueid
+
+    $GUID = MSSQL::DBlib::reformat_uniqueid($hexstring)
+
+Converts $hexstring which supposedly have been returned by L</dbnextrow2> as
+the value for a column of the type uniqueidentifier to the regular presentation
+form for a GUID. If $hexstring is already on this format, $hexstring is
+returned unchanged. If $hexstring is not a 32 character long hexstring (or 34
+with a leading 0x), L</reformat_uniqueid> returns C<undef>.
+
+This routine is not exported by default, so you either have to mention it
+explicitly in your C<use> statment, or give a full qualification as shown above.
+
+=head2 BCP Routines
+
+Constants for BCP are in MSSQL::DBlib::Const::BCP.
+
+There are two ways you can bulk copy data into the database: from variables and 
+from file. To copy data out of the database there is only one way: to file.
+
+When you copy from variables you use the routines L</bcp_init>,
+L</bcp_meminit>, L</bcp_sendrow>, L</bcp_batch> and L</bcp_done>.
+MSSQL::DBlib has here simplified the sequence you would use in a C program.
+
+When you copy from/to a file, you use the routines L</bcp_init>,
+L</bcp_columns>, L</bcp_colfmt> and L</bcp_exec>. Optionally you can
+change parameters with L</bcp_control>. This calling sequence is
+equivavelent to the one in C.
+
+B<Note:> I have made no attempt to find out which of the extentions to the
+datatypes in SQL Server 7, if any, that can be used with MSSQL::DBlib. When
+in doubt assume that none of the novelties work until anything else is proven.
+
+=head3 BCP_SETL
+
+   $status = BCP_SETL($state)
+
+If you wish to use the BCP routines for a connection, you must call
+C<BCP_SETL> with $state = 1 I<prior to> creating that connection 
+with L</dblogin> or L</dbopen>.
+
+This is an exported routine, thus you don't need any handle or package
+reference to call it.
+
+=head3 bcp_init
+
+   $status = $dbh->bcp_init($table, $datafile, $errfile, $direction)
+
+Initializes a bulk-copy operation. $table is the table you are bulking into 
+or out from. $datafile is a file that the data is read from or written to.
+Specify C<undef> if you are sending data from variables with L</bcp_sendrow>. 
+$errfile is a file for BCP to write error messages to. $direction must 
+be one of DB_OUT or DB_IN.
+
+=head3 bcp_meminit
+
+   $status = $dbh->bcp_meminit($numcols)
+
+This is a routine which is particular to MSSQL::DBlib and not available in 
+DB-Library itself. It defines the number of columns to use for a bulk copy 
+from program variables to SQL Server. It must be called prior to calling 
+L</bcp_sendrow>.
+
+See F<eg\bcp.pl> for a simple example.
+
+=head3 bcp_sendrow
+
+   $status = $dbh->bcp_sendrow(@list)
+
+Sends the data in @list to the server. @list is assumed to contain one 
+element for each column being updated. To send a NULL value set the 
+appropriate element to C<undef>. 
+
+Note that while data is sent to the server it is not actually committed
+until you call L</bcp_batch> or L</bcp_done>.
+
+You must call L</bcp_meminit> prior to calling L</bcp_sendrow>.
+
+=head3 bcp_batch
+
+   $rows_copied = $dbh->bcp_batch
+
+Commits what has been sent to the server in the previous calls to
+L</bcp_sendrow>. The return value is the number of rows copied.
+
+If you never call L</bcp_batch>, all rows will be committed when you
+call L</bcp_done>.
+
+=head3 bcp_done
+
+   $rows_copied = $dbh->bcp_done
+
+Ends a bulk copy from Perl variables into SQL Server with L</bcp_sendrow>
+and returns the number of rows copied in the last batch.
+
+=head3 bcp_control
+
+  $status = $dbh->bcp_control($field, $value)
+
+Changes the default settings for control parameters for a bulk copy between a
+file and SQL Server. The available values for $field are listed below. Note
+that for all parameters, specifying 0 for $value will give you the default
+value.
+
+B<BCPMAXERRS> The number of errors allowed before giving up. The default is 10. The
+maximum limit is 65.535.
+
+B<BCPFIRST> The first row to copy. The default is 1.
+
+B<BCPLAST> The last row to copy. By default all rows are copied.
+
+B<BCPBATCH> The number of rows per batch. The default is 0, that is all is sent in
+one batch.
+
+B<BCPKEEPNULLS> When set, empty data values in the file will be converted to NULL
+values in the SQL Server table. When unset, empty values will be converted to 
+the default value for the column. By default the option is not set.
+
+=head3 bcp_columns
+
+   $status = $dbh->bcp_columns($colcount)
+
+Sets the total number of columns found in the user file for use with
+a bulk copy into/out of SQL Server.
+
+=head3 bcp_colfmt
+
+   $status = $dbh->bcp_colfmt($file_colno, $file_datatype, $file_prefixlen,
+                              $file_collen, $col_terminator, $termlen,
+                              $table_col)
+
+Specifies the format of a user file for bulk copy into/out of SQL Server.
+What follows is my attempt to clarify the meaning of these parameters. For a
+complete reference please see the, ehum somewhat obscure, documentation for
+DB-Library.
+
+B<$file_colno> is the number of the column in your data file. The first
+column is number 1.
+
+B<$file_datatype> is the datatype for the column I<in the data file>. That
+is, if you have written a integer as a string to the file, you should
+say SQLCHAR here. Say SQLINT when you've written it as a binary value,
+e.g. with C<pack>. If you specify 0, DB-Library will use the type of
+the column in the table. You can only use datatypes for which there
+exists a conversion between the datatype of the file column and the datatype 
+of the database column.
+
+You use B<$file_prefixlen> when you want the boundaries of the column in
+the data file to be determined by a length prefix. This length prefix
+can be 1, 2 or 4 bytes long. Specify 0 if you don't use a length prefix.
+Specify -1 to let DB-Library decide. (I would not recommend this; you
+will scratch your hair, trying to understand what's going.) Notice that
+a datatype such as I<int> has a fixed length of 4 with one exception: for 
+NULL the length is 0. 
+
+B<$file_collen> specifies the maximum length of the column in the data file.
+-1 instructs DB-Library to ignore this parameter. 0 means that the column 
+is always NULL; the column in the database will receive NULL for all rows. 
+The value does not inlucde any length prefixes or terminators.
+
+B<$col_terminator> specifies a terminator string for the colunm in the data
+file. This string can be one or more characters long. Obviously the
+terminator must not appear in the data of the column. If you write a data
+file from Perl, and you want to inlucde newline in your terminator, you must
+specify "\r\n" and not only "\n", unless you applied C<binmode> on the file
+handle. Specify an empty string if you don't use any terminator.
+
+B<$term_len> is length of B<$col_terminator>. Set to 0 when you don't
+use a terminator.
+
+B<$table_col> is the number of the column in the table, starting on 1.
+
+As you see there are several ways you can specify the boundaries of
+a column: fixed-length datatype, length prefix, maximum length or
+a terminator. If you use more than one, DB-Library will use the one
+that results in the smallest amount of data being copied. I wouldn't
+enourage this usage, though.
+
+=head3 bcp_exec
+
+   $rows_copied = $dbh->bcp_exec
+   ($status, $rows_copied) = $dbh->bcp_exec
+
+Executes a complete bulk copy of data between a database and a user
+file. As shown, you can retrieve the return value in two ways: With a
+scalar as a return value, you will get the number of rows
+successfully copied. With a two-element list, the first element will
+be status of the operation, SUCCEED or FAIL, and the second column
+will be the number of rows copied.
+
+=head3 bcp_readfmt
+
+   $status = $dbh->bcp_readfmt($filename)
+
+Reads a datafile format definition from a user file for a bulk copy
+between a file and SQL Server and from the contents makes the
+corresponding calls to L</bcp_columns> and L</bcp_colfmt>.
+
+=head3 bcp_writefmt
+
+    $status = $dbh->bcp_writefmt($filename)
+
+Writes a datafile format definition to a user file for a bulk copy
+between a file and SQL Server. The contents of the file is derived
+from previous calls to L</bcp_columns> and L</bcp_colfmt>.
+
+=head2 RPC Routines
+
+Constants for RPC are declared in MSSQL::DBlib::Const::RPC. See
+F<eg/rpctest.pl> for an example on how to use these calls.
+
+=head3 dbrpcinit
+
+    $status = $dbh->dbrpcinit($SP, $option)
+
+Initializes an RPC call to the stored procedure $SP. Available options are
+DBRPCRECOMPILE, which forces a recompile (i.e. a re-optimization) of the
+called stored procedure, and DBRPCRESET which cancels any previous batch
+of stored procedures. It's probably a good habit to always use DBRPCRESET
+unless you are really having more than one procedure in the same batch.
+
+=head3 dbrpcparam
+
+   $status = $dbh->dbrpcparam($parname, $output, $type, $maxlen, 
+                              $datalen, $value)
+
+Adds a parameter to an RPC call initiated with L</dbrpcinit>.
+
+B<$parname> is the name of the variable, with B<@> included. Send C<undef> to
+send an unamed parameter; this will be interpreted as the first, second etc
+paramter of the procedure. Once you have provided one named parameter, the
+remaining parameters must also be named.
+
+B<$output> is either zero or DBRPCRETURN to specify that the parameter is
+an output parameter.
+
+B<$type> is the datatype of the parameter. Constants for datatypes are
+declared in MSSQL::DBlib::Const::Datatypes. All floating-point and decimal
+types (money, decimal, real etc) are converted to float before being sent 
+to the server. You can specify SQLUNIQUEIDENTIFIER for the type uniqueidentifier;
+L</dbrpcparam> will actually send this as SQLVARCHAR (as DB-Library does not
+support uniqueidentifier).
+
+For datetime and smalldatetime parameters you can specify either a character 
+datatype or a datetime datatype for $type. In the former case, conversion from 
+string value to (small)datetime is performed by SQL Server, in the latter case 
+by DB-Library (by I<dbconvert>). This can yield different results, as DB-Library 
+may look on regional settings (as determined in the SQL Client Configuration 
+Utility), but SQL Server does not. Also, the two may not support exactly the 
+same set of date formats.
+
+You cannot specify the new datatypes nchar, nvarchar and ntext. Pass these
+as SQLCHAR, SQLVARCHAR and SQLTEXT respectively.
+
+B<$maxlen> specifies the maximum length of an OUTPUT value. My empirical tests 
+indicate that you can set $maxlen to -1 in all cases, except when specifying 
+NULL for a text or image parameter, when it must be 0.
+
+B<$datalen> is the length of the data you send in. This should be -1 for a
+non-NULL fixed-length datatypes. Specify 0 for $datalen to send NULL for
+all datatypes. If you want to send an empty string, you need to actually send
+one blank. $datalen cannot exceed 255.
+
+B<$value> is the value for the parameter. When $datalen is 0, $value is
+ignored. When sending in a binary type, $value may, but does not need to,
+include a leading 0x. Note that with DB-Library you cannot pass an empty
+string for a varchar parameter, although SQL Server 7 supports this.
+
+=head3 dbrpcsend
+
+    $status = $dbh->dbrpcsend([$wait])
+
+Executes a call to a stored procedure initiated with L</dbrpcinit>. The parameter
+$wait determines if you want to wait for SQL Server to return a reply. The
+default is 1, to wait. 
+
+When you specify a false value for $wait, you must later call L</dbsqlok> 
+before you can fetch data with L</dbresults>.
+
+Seasoned DB-Library programmers should note that this function is slighlty
+different from its DB-Library namesake, which never waits for reply from
+SQL Server.
+
+=head3 dbretdata
+
+    @data = $dbh->dbretdata([0])
+    %data = $dbh->dbretdata(1)
+    $dataref = $dbh->dbretdata($use_hash, 1)
+
+Retrieves the values of the parameters marked as OUTPUT in a stored procedure
+executed with L</dbrpcsend> in the current batch.
+
+If the second parameter $wantref has a false value, the return value is a 
+list of scalar values. If the first parameter $use_hash has a true value, 
+the names of the parameters are included in the list, so that you can receive
+the data into a hash. 
+
+When $wantref has a true value, a reference to an array or a hash is
+returned, depending on $use_hash.
+
+This function is deprecated and provided for compatibility. The preferred
+routine is L</dbretdata2> on top which L</dbretdata> is implemented. See 
+L</dbretdata2> for further details.
+
+=head3 dbretdata2
+
+    $dataref = $dbh->dbretdata2([$use_hash])
+
+Retrieves the values of the parameters marked as OUTPUT in a stored procedure
+executed with L</dbrpcsend> in the current batch. 
+
+L</dbretdata2> returns a reference, which is a reference to an array if $use_hash
+has a false value or is omitted. Else it is a reference to a hash with the
+parameter names (including leading B<@>) as keys. If you did not provide any 
+parameter names with L</dbrpcparam>, the keys will be "Par I<n>", where I<n>
+is the number of that output parameter, counting B<only> the output parameters
+of the SP.
+
+You must not call L</dbretdata2> until you have processed the results of the SP. 
+That is, L</dbresults> should have returned NO_MORE_RESULTS (for the last 
+procedure in a batch) or NO_MORE_RPC_RESULTS (for the all but the last procedure 
+in a batch).
+
+For information on how L</dbretdata2> return different datatypes, see L</dbnextrow2>
+which has an identical behaviour in this area, except in one case: parameters
+of the type uniqueidentifier are returned as properly formatted GUID strings.
+
+=head3 dbretstatus
+
+    $status = $dbh->dbretstatus
+
+Retrieve the return status of the most recently executed stored procedure
+in the batch. You must not call L</dbretstatus> until you have processed the
+results of the SP. That is, L</dbresults> should have returned NO_MORE_RESULTS 
+(for the last procedure in a batch) or NO_MORE_RPC_RESULTS (for the all but 
+the last procedure in a batch).
+
+=head3 dbhasretstat
+
+   $status = $dbh->dbhasretstat
+
+Returns a true value if the most recently executed stored procedure returned a
+status value. As with L</dbretstatus> you must first process the results sets
+of the stored procedure.
+
+=head2 Two-Phase Commit Routines
+
+=over 8
+
+=item open_commit
+
+=item start_xact
+
+=item stat_xact
+
+=item commit_xact
+
+=item abort_xact
+
+=item close_commit
+
+=item build_xact_string
+
+=item remove_xact
+
+=back
+
+   $dbh = MSSQL::DBlib->open_commit($user, $pwd, $server, $appname)
+   $id = $dbh->start_xact($app_name, $xact_name, $site_count)
+   $status = $dbh->stat_xact($id)
+   $status = $dbh->commit_xact($id)
+   $status = $dbh->abort_xact($id)
+   $dbh->close_commit
+   $string = MSSQL::DBlib::build_xact_string($xact_name, $service_name, $id)
+   $status = $dbh->remove_xact($id, $site_count)
+
+
+These functions are provided for compatibility with Sybperl only. Descriptions
+of them are available in the DB-Library documentation that comes with SQL 
+Server 6.0 and 6.5. However, in Books Online for SQL Server 7, they are
+absent.
+
+=head2 Handle Attributes
+
+The handle you get with L</dblogin> or L</dbopen> has a number of attributes that
+you can use to alter the behaviour of MSSQL::DBlib. You access these with the 
+Perl hash table syntax:
+
+   $dbh->{'Attribute Name'}
+
+The following attributes are currently defined:
+
+=over 8
+
+=item dbNullIsUndef
+
+Controls how NULL values are to be returned by L</dbnextrow2> and L</dbretdata2>. 
+When unset, NULLs are returned as the string "NULL". When set, NULLs are returned 
+as C<undef>, which is the default.
+
+=item dbKeepNumeric
+
+Controls the data type of numeric values returned by L</dbnextrow2> and 
+L</dbretdata2>. If unset, numeric varaibles are returned to Perl as string 
+variables. If set, numeric values appear as numeric in Perl, which is the default.
+
+=item dbBin0x
+
+Controls how binary values are returned by L</dbnextrow2> and L</dbretdata2>. 
+Binary values (except for the datatype I<image>) are returned as string of 
+hex digits. With C<dbBin0x> set, the string is preceded with B<0x>, else not. 
+By default this attribute is not set.
+
+=item dateFormat
+
+=item msecFormat
+
+These control how I<datetime> and I<smalldatetime> values are converted to 
+strings by L</dbnextrow2> and L</dbretdata2>. C<dateFormat> controls how 
+everything but the milliseconds are formatted, while C<msecFormat> takes 
+care of that part, including the millisecond delimiter. (Obviously, 
+C<msecFormat> does not apply to smalldatetime values.)
+
+
+When defined the C<dateFormat> and C<msecFormat> are passed to the C run-time
+functions I<strftime> and I<sprintf> respectively. (And this is why there
+are two of them; I<strftime> does not deal with milliseconds.) If C<dateFormat>
+is undefined, C<msecFormat> is not looked at, and the DB-Library function
+I<dbconvert> is used for the conversion.
+
+A selection of format codes for C<dateFormat> follows. For a full reference
+see the documentation for I<strftime> in, for instance, the Visual C++
+reference.
+
+   %b, %B   Abbreviated/full month name.
+   %c       Date and time representation appropriate for locale.
+   %d       Day of month as decimal number (01 – 31)
+   %H, %I   Hour in 24/12-hour format (00 – 23)/(01 - 12)
+   %m       Month as decimal number (01 – 12)
+   %M       Minute as decimal number (00 – 59)
+   %p       Current locale's A.M./P.M. indicator for 12-hour clock.
+   %S       Second as decimal number (00 – 59)
+   %y, %Y   Year without/with century, as decimal number.
+   %%       Percent sign
+
+B<Note:> Looking at a Solaris manpage for I<strftime>, there appears
+to be differences to what Visual C++ provides. The codes above seem to 
+coincide, though. 
+
+For the format of C<msecFormat>, see the entry for I<sprintf> in the
+Camel book, or look up in I<sprintf> in any appropriate C reference.
+
+The defaults are C<undef> for C<dateFormat> and ".%3.3d" for
+C<msecFormat>.
+
+While you can pick any format you like, I would suggest that you use a format
+that SQL Server understands. If you plan to use the RPC routines, you should
+know that DB-Library fails with some formats that SQL Server grasps. So the
+format code "%Y-%m-%d %H:%M:%S" (e.g. "1998-01-01 12:12:12") works with
+L</dbcmd>/L</dbsqlexec>, but not if you pass it to L</dbrpcparam> as a
+datetime datatype. The format "19980101 12:12:12" works with both, though.
+
+=item cloneFlag
+
+If you for some reason make a temporary copy of the hash the handle
+is pointing to, you need to set the attribute C<cloneFlag> for that
+copy, or else Perl will close the SQL Server connection associated
+with that handle, when the copy goes out of scope.
+
+=back
+
+The following read-only attribues are available:
+
+=over 8
+
+=item DBstatus
+
+The return status of the last call to I<dbnextrow>. Undefined after all
+other calls.
+
+=item ComputeID
+
+The compute id of the most recently returned row by L</dbnextrow2>. See further
+this routine.
+
+=back
+
+If you examine the handle in the Perl debugger, you may find a few more
+attributes. These are strictly internal.
+
+=head2 Constants
+
+=over 4
+
+=item $MSSQL::DBlib::VERSION
+
+The version number of MSSQL::DBlib. Can be interpreted as a string or as a
+number.
+
+=item $MSSQL::DBlib::Version
+
+A longer blurb of version information that includes the copyright stuff.
+
+=back
+
+
+=head1 MSSQL::DBlib::Const
+
+The constants that are defined in SQLFRONT.H are available either from
+MSSQL::DBlib::Const that contains all constants, or MSSQL::DBlib::Const::*
+where you find the constants split up over several modules, so that you can
+C<use> only those you need.
+
+The constants TRUE and FALSE are not provided, though.
+
+This is the complete list of modules in MSSQL::DBlib::Const::*
+
+   MSSQL::DBlib::Const::Aggregates
+   MSSQL::DBlib::Const::BCP          -- Constants for BCP
+   MSSQL::DBlib::Const::Cursor
+   MSSQL::DBlib::Const::Datatypes    -- SQL Server datatypes.
+   MSSQL::DBlib::Const::DBSETLNAME   -- Useful only for DBSETLVERSION.
+   MSSQL::DBlib::Const::Errors       -- DB-Library error codes.
+   MSSQL::DBlib::Const::General      -- See below.
+   MSSQL::DBlib::Const::MaxValues    -- Various max and default values.
+   MSSQL::DBlib::Const::NetlibErrors
+   MSSQL::DBlib::Const::Offset
+   MSSQL::DBlib::Const::Options      -- Options with dbsetopt/dbclropt/dbgetopt.
+   MSSQL::DBlib::Const::Print
+   MSSQL::DBlib::Const::RPC          -- Constants for RPC.
+   MSSQL::DBlib::Const::ServerInfo
+   MSSQL::DBlib::Const::Severity     -- Severity levels of DB-Library errors.
+   MSSQL::DBlib::Const::Streamtokens
+   MSSQL::DBlib::Const::Text
+   MSSQL::DBlib::Const::Timeout      -- Constants for DBSETLTIME.
+
+Those I have left uncommented are probably not useful with MSSQL::DBlib as
+the DB-Library routines that use these with are not included in MSSQL::DBlib.
+
+The module MSSQL::DBlib::Const::General includes the most commonly used
+DB-Library constants (and a few more which didn't seem to fit anywhere else):
+
+   CI_REGULAR CI_ALTERNATE CI_CURSOR DBNOERR SUCCEED FAIL SUCCEED_ABORT
+   DBUNKNOWN MORE_ROWS NO_MORE_ROWS REG_ROW BUF_FULL NO_MORE_RESULTS
+   NO_MORE_RPC_RESULTS INT_EXIT INT_CONTINUE INT_CANCEL STDEXIT ERREXIT
+   SQLESMSG DBANSItoOEM DBOEMtoANSI
+
+Notice that SQLESMG is also declared in MSSQL::DBlib::Const::Errors and that
+DBANSItoOEM and DBOEMtoANSI also appear in MSSQL::DBlib::Const::Options. If
+you are running with the C<-w> switch, you will get warnings about redefined
+subroutines, if you include both General and any of the other two modules. 
+While these warnings are ignorable, they are not pretty. You can avoid them 
+by replacing
+
+   use MSSQL::DBlib::Const::General;
+
+with the following kludge:
+
+   BEGIN {
+          local($^W = 0);
+          require 'MSSQL/DBlib/Const/General.pm';
+          import MSSQL::DBlib::Const::General;
+         }
+
+Note that you must include MSSQL::DBlib::Const::General after the other constant
+modules for the kludge to work.
+
+=head1 BUGS
+
+If you call L</dbexit> without calling L</dbclose> on your handles, you
+will get an error message from DB-Library when the Perl script exits.
+
+If you run a script from the Perl debugger and the exit the debugger while in
+a message or error handler, Perl will hang until you kill it with CTRL/C.
+Obviously DB-Library doesn't like its I<dbclose> being called from a error or
+message handler. (I<dbclose> is called implicitly when an object is
+destroyed.)
+
+The 2PC calls have not been tested.
+
+This version of MSSQL::DBlib have been tested SQL 6.5 and SQL 7.0 but
+not with SQL 6.0 or SQL 4.21. Binaries included in the distribution are 
+not likely to work with 6.0 and 4.21. You must also remove L</DBSETLFALLBACK> 
+to build MSSQL::DBlib with 6.0 and 4.21. 4.21 may require further
+deletions.
+
+=head1 Compatibility with Sybperl
+
+This section only concerns the module Sybase::DBlib. There is no support for
+Sybase::Sybperl or Sybase::BCP, and even less for Sybase::CTlib, as this
+library is not available with Microsoft SQL Server.
+
+=over 4
+
+=item *
+
+You must change C<use Sybase::DBlib> to say C<use MSSQL::DBlib>.
+
+You probably also need to add C<use> for the MSSQL::DBlib::Const::* modules
+you need, see the section L</MSSQL::DBlib::Const> above. Also note that some
+constant names are different with MS SQL Server. For instance, the for the 
+error codes the names start with I<SQL>, not I<SYB>.
+
+=item *
+
+The following routines available in Sybperl 2.03 are missing:
+
+I<DBSETLCHARSET>, I<bcp_getl>, I<dbgetpacket>, the I<dbmny*> routines,
+I<dbrecftos>, I<dbsafestr>, I<dbsetifile>, I<dbversion>, I<dbrpwset>, 
+I<dbrpwset>, I<scan_xact>.
+
+All of these are not available in Microsoft's DB-Library. (Except for
+I<scan_xact> which is documented, but doesn't link...)
+
+=item *
+
+The routines L</dbsetopt> and L</bcp_colfmt> have a shorter parameter list
+with MSSQL::DBlib than in Sybperl, since Microsoft does not provide these
+parameters.
+
+=item *
+
+The constant DBLIBVS is not avaiable. Also, constants that were added by 
+Sybase after the split between Sybase and Microsoft are likely to be missing.
+
+=item *
+
+Features that Michael Peppler added to Sybperl in version 2.04 and later are
+not present, as MSSQL::DBlib is based on a port of Sybperl 2.03 to NT. This
+include the debug/trace feautre, the Sybase::Money and Sybase::DateTime
+classes, and the BCP module. There is likely to be more.
+
+=item *
+
+L</dbprtype> has a different behaviour from Sybperl. (Then again, this routine
+is undocumented in Sybperl).
+
+=item *
+
+The routine Sybase::DBlib::sql is not available in MSSQL::DBlib, but has a
+much more powerful namesake in the MSSQL::Sqllib module. That also means that
+the handle attribute MaxRows have no meaning in MSSQL::DBlib.
+
+=back
+
+=head1 AUTHOR
+
+Larry Wall invented Perl.
+
+Michael Peppler wrote the original Sybperl.
+
+Christian Mallwitz of Intershop GmbH ported Sybperl 2.03 to NT.
+
+Erland Sommarskog  E<lt>F<sommar@algonet.se>E<gt> turned Michael's
+and Christian's efforts into MSSQL::DBlib and is the maintainer of this
+module.
+
+=cut

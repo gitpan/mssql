@@ -1,0 +1,118 @@
+<HTML>
+<HEAD>
+<TITLE>README for the source-only distribution of the MSSQL modules</TITLE>
+</HEAD>
+<BODY>
+<BODY>
+<H1><CENTER>MSSQL::DBlib 1.005<BR>
+    MSSQL::Sqllib 1.005</CENTER></H1>
+<UL>
+<P>
+     This is MSSQL, classes for calling DB-Library for Microsoft SQL
+     Server from Perl.
+<P>
+     Copyright © 1991-1995 Michael Peppler<BR>
+     Copyright © 1996      Christian Mallwitz, Intershop Gmbh<BR>
+     Copyright © 1997-1999 Erland Sommarskog<BR>
+     All rights reserved.<BR>
+<P>
+  This program is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself.
+<P>
+</UL>
+<H3>Brief overview</H3>
+Michael Peppler developped Sybperl. Christian Mallwitz of Intershop GmbH
+ported Sybperl 2.03 to NT (there is now a more recent NT port that comes with
+the regular Sybperl distribution). From their work, I created MSSQL::DBlib.
+<P>
+MSSQL::Sqllib is fairly generic SQL library built on top of the DBlib
+class, with an interface which is focused on being simple to use.
+<P>
+<H3>Alternative distribution</H3>
+This is a source-only distribution, and you will need a C++ compiler and a
+MAKE utility to install it. At my web site you can find binary distributions
+(with source included) for ActiveState 3xx and 5xx:
+<UL>
+<LI> <A HREF="http://www.algonet.se/~sommar/mssql/mssql-as3xx-1.005.zip">
+     http://www.algonet.se/~sommar/mssql/mssql-as3xx-1.005.zip</A> - ActiveState Build 306-316.
+</LI>
+<LI> <A HREF="http://www.algonet.se/~sommar/mssql/mssql-as5xx-1.005.zip">
+     http://www.algonet.se/~sommar/mssql/mssql-as5xx-1.005.zip</A> - ActiveState Build 5xx.
+</LI>
+</UL>
+
+<H3>Prerequisites</H3>
+To install this you need.
+<UL>
+<LI> Include files and link libraries DB-Library for MS SQL Server 6.5 or higher.
+     These are in the Programmers Toolkit, which is on the SQL Workstation CD as
+     the MSDN disks. It's also included on the SQL Server 7 CD. </LI>
+<LI> A Perl 5.004 or higher installed on NT. </LI>
+<LI> C++ compiler. (I don't think a mere C compiler would do). If you don't have
+     a C++ compiler GNU has a free compiler. (Sorry, I don't have a URL.) </LI>
+<LI> A make facility. You can get Microsofts NMAKE (for x86) on:
+     <A HREF="ftp://ftp.microsoft.com/Softlib/MSLFILES/nmake15.exe">
+     ftp://ftp.microsoft.com/Softlib/MSLFILES/nmake15.exe</A></LI>
+<LI> I have only run this under NT4 SP3&4, but I would expect it work with
+     Win95 and NT3.51 as well. It will not run on Win3.11.</LI>
+</UL>
+
+If you only have MS SQL Server 6.0 or 4.2:
+<UL>
+<LI> Grab hold of the PTK with the include files and link libraries. Remove the
+     functions in MSSQL::DBlib which does not compile or link. Hopefully, there
+     are no essential functions among these. </LI>
+</UL>
+
+<H3>How to install</H3>
+Text in <KBD>this type face</KBD> indicates command you run from the command prompt.
+<OL TYPE=1>
+<LI>Extract the zip file anywhere you like.</LI>
+<LI>Edit DBlib/makefile.pl so that $SQLDIR points to where you inlucde and link
+    libraries for DB-Library are included.</LI>
+<LI>DBlib/makefile.pl also includes a <I>dynamic_lib</I> option, which I don't
+    know whether it will work with other compilers than Visual C++. For better
+    startup performance, you are encouraged to find the corresponding command-line
+    option for your compiler. However, you can remove it if you don't care.
+<LI>Open a Command Prompt, and change directory to where you extracted the files.</LI>
+<LI><KBD>Perl makefile.pl</KBD>. <BR>
+    I suggest that you run this from the top directory.</LI>
+<LI><KBD>MAKE</KBD><BR>
+    Or <KBD>NMAKE</KBD>, <KBD>DMAKE</KBD> or whatever your MAKE utility you use.
+<LI>If you want to run the test scripts, edit DBlib/t/sqllogin.pl and
+    Sqllib/t/sqllogin.pl so that they contain a valid combination of user, password
+    and server. They're shipped to run as sa with no password on the local server.
+    Don't forget to remove sensitive information, once the tests are OK.</LI>
+<LI><KBD>MAKE test</KBD><BR>
+    See <A HREF="tests.html">tests.html</A> for notes on the tests.
+<LI><KBD>MAKE install</KBD>
+</OL>
+You're on the air!
+
+<H3>Manuals</H3>
+The <I>docs</I> subdirectory contains documentation for the two modules. There is
+a POD and an HTML file for each module. You may want to rebuild the HTML files,
+so that references to Perl elements outside MSSQL are resolved. The file DOPOD.BAT
+is a simple file that just builds the HTML files locally.
+
+<H3>Sample scripts</H3>
+The directory <I>eg</I> contains a small collection of sample scripts, some
+that I've inherited from the Sybperl distribution. You also find one utility
+that might be useful, SPTRITEST, which tests all stored procedures in a
+database for trivial errors. <B>WARNING!</B> Don't run SPTRITEST on a live
+database, but only a database you can afford to waste. There is a separate
+<A HREF="eg/README.html">README</A> for this directory.
+
+<H3>Reporting bugs or problems</H3>
+Please mail bug reports and suggestions to <A HREF="mailto:sommar-perl@algonet.se">
+sommar-perl@algonet.se</A>. Try to make your reports as specific as possible.
+Paricularly don't forget to include which versions of Perl, NT, SQL Server etc
+you are using. Please have patience with me, if I cannot address your issue
+on the spot. I am sometimes a busy man. ...and don't forget to read the manual!
+<P>
+<HR>
+<I>
+Last updated <!--$$Modtime:--> 99-01-30 19:49 <!-- $-->
+</I>
+</BODY>
+</HTML>
