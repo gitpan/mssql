@@ -4,10 +4,11 @@
 # sensitive information once you've tested! Default is local user and
 # local server with no password.
 
-
-$Uid = 'sa';
-$Pwd = '';
-$Srv = '';
+# Comment this if you don't want trusted connection.
+MSSQL::DBlib::DBSETLSECURE();
+$Uid = 'sa';     # Only matters is above is commented.
+$Pwd = '';       # Ditto.
+$Srv = '';       # Local server.
 
 # Don't remove the 1, or else C<require> will fail!
 1;

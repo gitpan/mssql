@@ -1,10 +1,20 @@
 #-----------------------------------------------------------------------
-# $Header: /Perl/MSSQL/DBlib/t/1_dblib.t 2     99-01-30 16:55 Sommar $
+# $Header: /Perl/MSSQL/DBlib/t/1_dblib.t 4     02-12-26 20:04 Sommar $
 #
 # Basic test suite for DB-lib. Includes of RPC:
 #
 # $History: 1_dblib.t $
 # 
+# *****************  Version 4  *****************
+# User: Sommar       Date: 02-12-26   Time: 20:04
+# Updated in $/Perl/MSSQL/DBlib/t
+# Slight error: $row was not declare locally in message handler.
+#
+# *****************  Version 3  *****************
+# User: Sommar       Date: 02-12-24   Time: 23:51
+# Updated in $/Perl/MSSQL/DBlib/t
+# Run tests with $^W set.
+#
 # *****************  Version 2  *****************
 # User: Sommar       Date: 99-01-30   Time: 16:55
 # Updated in $/Perl/MSSQL/DBlib/t
@@ -17,6 +27,7 @@
 
 use strict;
 
+$^W = 1;
 print "1..34\n";
 
 use MSSQL::DBlib qw(1);
@@ -215,7 +226,7 @@ sub message_handler
 
         if(defined($db))
         {
-            my ($lineno, $cmdbuff) = (1, undef);
+            my ($lineno, $cmdbuff, $row) = (1, undef, undef);
 
             $cmdbuff = MSSQL::DBlib::dbstrcpy($db);
 

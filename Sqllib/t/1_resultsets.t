@@ -1,8 +1,13 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/MSSQL/Sqllib/t/1_resultsets.t 2     01-05-01 22:51 Sommar $
+# $Header: /Perl/MSSQL/Sqllib/t/1_resultsets.t 3     02-12-24 23:48 Sommar $
 #
 # $History: 1_resultsets.t $
 # 
+# *****************  Version 3  *****************
+# User: Sommar       Date: 02-12-24   Time: 23:48
+# Updated in $/Perl/MSSQL/Sqllib/t
+# Run with $^W = 1, so that test of warnings work,
+#
 # *****************  Version 2  *****************
 # User: Sommar       Date: 01-05-01   Time: 22:51
 # Updated in $/Perl/MSSQL/Sqllib/t
@@ -27,7 +32,7 @@ sub blurb{
 
 $verbose = shift @ARGV;
 
-#$^W = 1;
+$^W = 1;
 
 $| = 1;
 
@@ -45,7 +50,7 @@ $X->{errInfo}{printLines} = 25;
 $X->{errInfo}{printMsg}   = 25;
 $X->{errInfo}{printText}  = 25;
 
-$SQLSEP = "@!@";
+$SQLSEP = '@!@';
 
 # First set up tables and data.
 sql(<<SQLEND);

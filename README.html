@@ -1,0 +1,179 @@
+<HTML>
+<HEAD>
+<TITLE>README for the binary distribution for AS Perl 5xx of the MSSQL modules</TITLE>
+</HEAD>
+<BODY>
+<BODY><CENTER>
+<H1>MSSQL::DBlib 1.009<BR>
+    MSSQL::Sqllib 1.008</H1></CENTER>
+<UL>
+<P>
+     This is MSSQL, classes for calling DB-Library for Microsoft SQL
+     Server from Perl.
+<P>
+     Copyright © 1991-1995 Michael Peppler<BR>
+     Copyright © 1996      Christian Mallwitz, Intershop Gmbh<BR>
+     Copyright © 1997-2003 Erland Sommarskog<BR>
+     All rights reserved.<BR>
+<P>
+  This program is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself.
+<P>
+</UL>
+<H3>Brief overview</H3>
+Michael Peppler developped Sybperl. Christian Mallwitz of Intershop GmbH
+ported Sybperl 2.03 to NT (there is now a more recent NT port that comes with
+the regular Sybperl distribution). From their work, I created MSSQL::DBlib.
+<P>
+MSSQL::Sqllib is fairly generic SQL library built on top of the DBlib
+class, with an interface which is focused on being simple to use.
+<P>
+<H3>What's in this kit</H3>
+The zip file includes Intel binaries for ActivePerl 5xx, 6xx and 8xx
+(Perl 5.005, 5.6 and 5.8). If you need a binary for ActivePerl 3xx,
+mail me at <A HREF="mailto:sommar@algonet.se">sommar@algonet.se</A>.
+<P>
+The kit includes source files and a makefile.pl, so that you can build it from
+sources if you like. See <A HREF="#build_src">Building from sources</A> at
+the end of this file.
+<P>
+The binaries were all built on Windows XP SP1, against versions 522, 631
+and 804 of ActivePerl. For the binaries for ActivePerl 6xx and ActivePerl
+8xx I used the C++ compiler in Visual Studio 6 SP5. For the binary for
+ActivePerl 5xx, I used the C++ compiler in Visual Studio .Net. (Because
+the binary compiled with VC+ 6 would not run).
+</UL>
+
+<H3>Prerequisites</H3>
+To install the binaries this you need (if you are building from sources,
+see below).
+<UL>
+<LI> ActiveState Perl Build 5xx, 6xx or 8xx.
+</LI>
+<LI> Run-time libraries for DB-Library on the machine where you run the Perl
+     scripts. (To install these it is sufficient to install the client part
+     of SQL Server.)
+</LI>
+<LI> Access to SQL Server 6.5 or later.
+</LI>
+<LI> Any Windows platform (save arcane 16-bit versions) should do, but I
+     have only tested the current binaries on Windows XP and Windos 2000.
+</LI>
+</UL>
+
+<H3>How to install</H3>
+<UL>
+<LI> Extract the zip file anywhere you like.
+</LI>
+<LI>Open a Command Prompt, and change directory to where you extracted the files.
+</LI>
+<LI>Run the script activeperl-copy.pl. This script inspects your PATH to determine
+    where your Perl installation is, and installs the files according to
+    the structure used by ActivePerl.
+</LI>
+<LI>You can prevent the script from searching by
+    giving the top directory for your Perl installation yourself. E.g.:<BR><BR>
+    <CODE>
+    perl activeperl-copy.pl C:\Perl
+    </CODE><BR>
+</UL>
+
+<H3>Running test scripts</H3>
+The MSSQL modules comes with a couple of test scripts. If you install from
+source code, you run the test scripts as part of the installation process,
+see <A HREF="#build_src">below</A>.
+<P>
+If you want to verify a binary installation, run test scripts from the command
+line. See <A HREF="tests.html">tests.html</A> for how to run the test scripts.
+
+<H3>Small troubleshooting guide</H3>
+You may get a message like this when you run a script which uses any of the MSSQL
+modules:
+<PRE>
+   Can't load 'f:/Perl/AS-613/site/lib/auto/MSSQL/DBlib/DBlib.dll' for module MSSQL
+   ::DBlib: load_file:The specified module could not be found at f:/Perl/AS-613/lib
+   /DynaLoader.pm line 200.
+    at 1_dblib.t line 22
+   Compilation failed in require at 1_dblib.t line 22.
+   BEGIN failed--compilation aborted at 1_dblib.t line 22.</PRE>
+<P>
+This means that one or more of the DLLs required to run DB-Library are
+not present. Probably you have not installed the client part of SQL
+Server on the machine where you get this error. Grab hold of an SQL
+Server CD. You only need to install client libraries.
+<P>
+If the above happens to you when you run the script from a web server,
+but it works when you run from a command prompt, then you need to
+install DB-Library on the web server.
+
+
+<H3>Manuals</H3>
+The <I>docs</I> subdirectory contains documentation for the two modules. There is
+a POD and an HTML file for each module. You may want to rebuild the HTML files,
+so that references to Perl elements outside MSSQL are resolved. The file DOPOD.BAT
+is a simple file that just builds the HTML files locally.
+
+<H3>Sample scripts</H3>
+The directory <I>eg</I> contains a small collection of sample scripts, some
+that I've inherited from the Sybperl distribution. You also find one utility
+that might be useful, SPTRITEST, which tests all stored procedures in a
+database for trivial errors. <B>WARNING!</B> Don't run SPTRITEST on a live
+database, but only on a database you can afford to waste.
+
+<H3>Reporting bugs or problems</H3>
+Please mail bug reports and suggestions to <A HREF="mailto:sommar@algonet.se">
+sommar@algonet.se</A>. Try to make your reports as specific as possible.
+Particularly don't forget to include which versions of Perl, Windows, SQL Server
+etc you are using.
+<P>
+I usually try to respond within 24-48 hours, but if I am on holiday I am.
+<P>
+<H2><A NAME="build_src">Building from Sources</A></H2>
+<H3>Prerequisites</H3>
+To build this you need.
+<UL>
+<LI> Include files and link libraries DB-Library for MS SQL Server 6.5 or higher.
+     These are on your SQL Server CD, but may not be installed by default.
+     <B>Note:</B> Microsoft has announced that the version
+     of SQL Server after SQL2000 will not come with these files.
+</LI>
+<LI> A Perl 5.004 or higher installed on Windows. </LI>
+<LI> A C++ compiler. If you don't have a C++ compiler GNU has a free compiler.
+     (Sorry, I don't have a URL.) <B>Caveat:</B> I have not tried to build
+     this with any compiler than Visual C++</LI>
+<LI> A make facility. You can get Microsofts NMAKE (for x86) on:
+     <A HREF="ftp://ftp.microsoft.com/Softlib/MSLFILES/nmake15.exe">
+     ftp://ftp.microsoft.com/Softlib/MSLFILES/nmake15.exe</A></LI>
+</UL>
+
+<H3>How to install</H3>
+Text in <KBD>this type face</KBD> indicates command you run from the command prompt.
+<OL TYPE=1>
+<LI>Extract the zip file anywhere you like.</LI>
+<LI>Edit DBlib/makefile.pl so that $SQLDIR points to where you include and link
+    libraries for DB-Library are included.</LI>
+<LI>DBlib/makefile.pl also includes a <I>dynamic_lib</I> option, which I don't
+    know whether it will work with other compilers than Visual C++. For better
+    startup performance, you are encouraged to find the corresponding command-line
+    option for your compiler. However, you can remove it if you don't care.
+<LI>Open a Command Prompt, and change directory to where you extracted the files.</LI>
+<LI><KBD>Perl makefile.pl</KBD>. <BR>
+    I suggest that you run this from the top directory.</LI>
+<LI><KBD>MAKE</KBD><BR>
+    Or <KBD>NMAKE</KBD>, <KBD>DMAKE</KBD> or whatever your MAKE utility you use.
+<LI>If you want to run the test scripts, edit DBlib/t/sqllogin.pl and
+    Sqllib/t/sqllogin.pl so that they contain a valid combination of user, password
+    and server. They're shipped to use Windows authentication and local server.
+    Don't forget to remove sensitive information, once the tests are OK.</LI>
+<LI><KBD>MAKE test</KBD><BR>
+    See <A HREF="tests.html">tests.html</A> for notes on the tests.
+<LI><KBD>MAKE install</KBD>
+</OL>
+You're on the air!
+
+<HR>
+<I>
+Last updated <!--$$Modtime:--> 03-01-01 20:11 <!-- $-->
+</I>
+</BODY>
+</HTML>

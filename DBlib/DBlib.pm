@@ -1,7 +1,7 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/MSSQL/DBlib/DBlib.pm 4     01-05-01 22:38 Sommar $
+# $Header: /Perl/MSSQL/DBlib/DBlib.pm 8     03-01-01 15:15 Sommar $
 # Copyright (c) 1991-1995 Michael Peppler
-# Copyright (c) 1997-2001 Erland Sommarskog
+# Copyright (c) 1997-2003 Erland Sommarskog
 #
 #   You may copy this under the terms of the GNU General Public License,
 #   or the Artistic License, copies of which should have accompanied
@@ -9,6 +9,27 @@
 #
 # $History: DBlib.pm $
 # 
+# *****************  Version 8  *****************
+# User: Sommar       Date: 03-01-01   Time: 15:15
+# Updated in $/Perl/MSSQL/DBlib
+# Updated year in Copyright,
+#
+# *****************  Version 7  *****************
+# User: Sommar       Date: 02-12-29   Time: 20:40
+# Updated in $/Perl/MSSQL/DBlib
+# Added END section to cleanup. This is good when running from things
+# like PerlScript.
+#
+# *****************  Version 6  *****************
+# User: Sommar       Date: 02-12-26   Time: 23:11
+# Updated in $/Perl/MSSQL/DBlib
+# We'are at version 1.009 now.
+#
+# *****************  Version 5  *****************
+# User: Sommar       Date: 01-10-21   Time: 14:57
+# Updated in $/Perl/MSSQL/DBlib
+# Added dbgetmaxprocs and dbsetmaxprocs.
+#
 # *****************  Version 4  *****************
 # User: Sommar       Date: 01-05-01   Time: 22:38
 # Updated in $/Perl/MSSQL/DBlib
@@ -38,7 +59,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK $VERSION $Version);
 use Exporter;
 require DynaLoader;   # C<use> gives warning with AS Perl.
 
-$VERSION = '1.008';
+$VERSION = '1.009';
 
 @ISA = qw(Exporter  DynaLoader);
 
@@ -46,13 +67,17 @@ $VERSION = '1.008';
              BCP_SETL dbsetlogintime dbsettime DBGETTIME
              DBSETLAPP DBSETLHOST DBSETLNATLANG DBSETLPACKET
              DBSETLPWD DBSETLSECURE DBSETLTIME DBSETLUSER
-             DBSETLVERSION);
+             DBSETLVERSION dbsetmaxprocs dbgetmaxprocs);
 @EXPORT_OK = qw(reformat_uniqueid);
 
 bootstrap MSSQL::DBlib;
 
 # Alias dblogin to new:
 *new = \&dblogin;
+
+END {
+   image_rundown();
+}
 
 # dbnextrow and dbretdata are provided here for compatibility.
 sub dbnextrow {

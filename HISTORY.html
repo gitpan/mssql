@@ -7,7 +7,37 @@
 <CENTER>
 <H1>History MSSQL modules</H1>
 </CENTER>
-<H3>010505</H3>
+<H3>2003-01-01</H3>
+MSSQL::DBlib 1.009 released. There is now only download file for all
+binary versions and source code. Likewise only one
+<A HREF="README.html">README</A>.
+<H4>News for MSSQL::DBlib</H4>
+<UL>
+   <LI>Now builds with Perl 5.8. Binary for ActivePerl 8xx available.</LI>
+   <LI>Problem that caused script to fail when run for a second time with
+       PerlScript from ISAPI or DTS is now solved. Furthermore, MSSQL::DBlib
+       can now be run from concurrent threads from PerlScript. However,
+       MSSQL::DBlib does not work with the new <CODE>use thread</CODE> in
+       Perl 5.8. For more information, see the section
+       <A HREF="docs/mssql-dblib.html#notes_on_threading_and_perlscript">
+       Notes on threading and PerlScript</A> on the man-page for MSSQL::DBlib.</LI>
+   <LI>Added three new functions.
+       <A HREF="docs/mssql-dblib.html#dbgetpacket">dbgetpacket</A>,
+       <A HREF="docs/mssql-dblib.html#dbsetmaxprocs">dbsetmaxprocs</A>,
+       <A HREF="docs/mssql-dblib.html#dbgetmaxprocs">dbgetmaxprocs</A></LI>
+   <LI>Fixed error in makefile where I attempted to give the DLL a unique
+       start adress, but I somehow failed.</LI>
+   <LI>Test scripts now uses Windows authentication by default.
+</UL>
+<H4>News for MSSQL::Sqllib</H4>
+<UL><LI>No actual change to source code.</LI>
+    <LI>The use of a default handle is no discouraged. (And with PerlScript
+        you must always an explicit handle.)
+    <LI>Minor changes to test scripts. Test scripts now uses Window
+        authentication by default.</LI>
+    <LI>Some minor doc enhancements.</LI>
+</UL>
+<H3>2001-05-05</H3>
 MSSQL::DBlib 1.008 and MSSQL::Sqllib 1.008 released.
 <H4>News for MSSQL::DBlib</H4>
 <UL>
@@ -41,8 +71,8 @@ MSSQL::DBlib 1.008 and MSSQL::Sqllib 1.008 released.
        <A HREF="docs/mssql-sqllib.html#sql_sp">sql_sp</A> which caused the
        script to crash when there was no results sets at all, for instance
        because there was a compilation error in the SQL code, and you had
-       set the <A HREF="docs/mssql-sqllib.html#item_maxSeverity">maxSeverity</A>
-       in <A HREF="docs/mssql-sqllib.html#errInfo">errInfo</A> to 25 to
+       set the <A HREF="docs/mssql-sqllib.html#item_maxseverity">maxSeverity</A>
+       in <A HREF="docs/mssql-sqllib.html#errinfo">errInfo</A> to 25 to
        prevent any stop on SQL errors, and you had specified a list or a
        hash to receive the return value.<BR>&nbsp;&nbsp;&nbsp;
           This is now fixed, and <A HREF="docs/mssql-sqllib.html#sql">sql</A> and
@@ -64,7 +94,7 @@ specifically with MSSQL::*, but more of a general nature. The binary
 shipped for AS 5xx is built with NT4. The binaries for ActivePerl 5.6 and
 AS 3xx are built with Windows 2000.
 <P>
-<H3>000914</H3>
+<H3>2000-09-14</H3>
 MSSQL::Sqllib 1.007 released.
 <H4>News for MSSQL::DBlib</H4>
 <UL>
@@ -75,18 +105,18 @@ MSSQL::Sqllib 1.007 released.
 </UL>
 <H4>News for MSSQL::Sqllib</H4>
 <UL>
-   <LI>New handle attribute <A HREF="docs/mssql-sqllib.html#item_SQL_version">
+   <LI>New handle attribute <A HREF="docs/mssql-sqllib.html#item_sql_version">
        SQL_version</A>, gives you the SQL Server version.
    </LI>
    <LI>Message 3622, <I>A domain error occurred</I> is now in
-       <A HREF="docs/mssql-sqllib.html#item_alwaysPrint">alwaysPrint</A> by
+       <A HREF="docs/mssql-sqllib.html#item_alwaysprint">alwaysPrint</A> by
        default.
    </LI>
    <LI>Minor adaptions to resolve things that broke with SQL 2000.
    </LI>
 </UL>
 </CENTER>
-<H3>000505</H3>
+<H3>2000-05-05</H3>
 MSSQL::DBlib 1.006 and MSSQL::Sqllib 1.006 released.
 <H4>News for MSSQL::DBlib</H4>
 <UL>
@@ -109,7 +139,7 @@ MSSQL::DBlib 1.006 and MSSQL::Sqllib 1.006 released.
        <A HREF="docs/mssql-dblib.html#dbiscount">dbiscount</A>,
        <A HREF="docs/mssql-dblib.html#dbgetoff">dbgetoff</A>
     </LI>
-    <LI><A HREF="docs/mssql-dblib.html#DBSETFALLBACK">DBSETFALLBACK</A> was
+    <LI><A HREF="docs/mssql-dblib.html#dbsetlfallback">DBSETLFALLBACK</A> was
         not calling it's DB-Library namesake, but the completely wrong routine.
     </LI>
 </UL>
@@ -117,8 +147,8 @@ MSSQL::DBlib 1.006 and MSSQL::Sqllib 1.006 released.
 <UL>
     <LI>Memory leaks fixed (same as in MSSQL::DBlib, see above).
     </LI>
-    <LI>The <A HREF="docs/mssql-sqllib.html#errInfo">errInfo</A> structure
-        has a new attribute: <A HREF="docs/mssql-sqllib.html#item_errFileHandle">
+    <LI>The <A HREF="docs/mssql-sqllib.html#errinfo">errInfo</A> structure
+        has a new attribute: <A HREF="docs/mssql-sqllib.html#item_errfilehandle">
         errFileHandle</A>, which permits you to direct error messages to a
         file. You should assign the attribute an open file handle. The default
         is STDERR.
@@ -130,7 +160,7 @@ MSSQL::DBlib 1.006 and MSSQL::Sqllib 1.006 released.
         don't handle longer values for these datatypes.
     </LI>
 </UL>
-<H3>990201</H3>
+<H3>1999-02-01</H3>
 MSSQL::DBlib 1.005 and MSSQL::Sqllib 1.005 released.
 <H4>General news</H4>
 <UL>
@@ -192,12 +222,12 @@ MSSQL::DBlib 1.005 and MSSQL::Sqllib 1.005 released.
 </UL>
 <H4>News for MSSQL::Sqllib</H4>
 <UL>
-    <LI>New result style <A HREF="docs/mssql-sqllib.html#item_KEYED">KEYED</A> for
+    <LI>New result style <A HREF="docs/mssql-sqllib.html#item_keyed">KEYED</A> for
         <A HREF="docs/mssql-sqllib.html#sql">sql</A> and
         <A HREF="docs/mssql-sqllib.html#sql_sp">sql_sp</A> which permits you to
         retrieve a result set as a hash keyed by the key columns of the result set.
     </LI>
-    <LI>The handle attribute <A HREF="docs/mssql-sqllib.html#errInfo">errInfo</A> has
+    <LI>The handle attribute <A HREF="docs/mssql-sqllib.html#errinfo">errInfo</A> has
         several changes:
         <UL>
             <LI>You can now specify per message nummer whether it is to be printed.
@@ -209,7 +239,7 @@ MSSQL::DBlib 1.005 and MSSQL::Sqllib 1.005 released.
             </LI>
             <LI>You can now also control
                  <A HREF="docs/mssql-sqllib.html#sql_error_handler">sql_error_handler</A>
-                 with the <A HREF="docs/mssql-sqllib.html#errInfo">errInfo</A> attribute.
+                 with the <A HREF="docs/mssql-sqllib.html#errinfo">errInfo</A> attribute.
             </LI>
             <LI>The element <I>showplan</I> has been removed, being redundant with other
                 elements.
@@ -238,17 +268,17 @@ MSSQL::DBlib 1.005 and MSSQL::Sqllib 1.005 released.
      <LI>A few more buglet fixes that I don't detail here.
      </LI>
 </UL>
-<H3>980212</H3>
+<H3>1998-02-12</H3>
 Fix release: the script name was incorrectly analysed at startup,
 which could give "Name too long for loginrec field." Hopefully
 this solves problems with using MSSQL::* with IIS.
 
-<H3>980201</H3>
+<H3>1998-02-01</H3>
 Initial release for ActiveState Perl only.
 </HTML>
 <P>
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 01-05-05 19:01 <!-- $-->
+Last updated <!--$$Modtime:--> 03-01-01 17:59 <!-- $-->
 </I>
 <BODY>

@@ -1,9 +1,9 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/MSSQL/DBlib/DBlib.xs 7     01-05-01 22:39 Sommar $
+ $Header: /Perl/MSSQL/DBlib/DBlib.xs 12    03-01-01 15:15 Sommar $
 
   Copyright (c) 1991-1995    Michael Peppler, original Sybperl
   Copyright (c) 1996         Christian Mallwitz, NT port of Sybperl
-  Copyright (c) 1997-2001    Erland Sommarskog, MSSQL::DBlib from NT-Sybperl.
+  Copyright (c) 1997-2003    Erland Sommarskog, MSSQL::DBlib from NT-Sybperl.
 
   You may copy this under the terms of the GNU General Public License,
   or the Artistic License, copies of which should have accompanied
@@ -11,6 +11,36 @@
 
   $History: DBlib.xs $
  * 
+ * *****************  Version 12  *****************
+ * User: Sommar       Date: 03-01-01   Time: 15:15
+ * Updated in $/Perl/MSSQL/DBlib
+ * Updated year in Copyright,
+ *
+ * *****************  Version 11  *****************
+ * User: Sommar       Date: 02-12-31   Time: 20:00
+ * Updated in $/Perl/MSSQL/DBlib
+ * Some final adjustments to make it compile with VC++ 6 (math.h) and
+ * AS3xx (More PERL_OBJECT_THIS).
+ *
+ * *****************  Version 10  *****************
+ * User: Sommar       Date: 02-12-29   Time: 20:43
+ * Updated in $/Perl/MSSQL/DBlib
+ * We now handle concurrent invocations of the module from the thread in
+ * the same process started from things like PerlScript. However, we do
+ * not handle regular perl scripts that creates threads.
+ *
+ * *****************  Version 9  *****************
+ * User: Sommar       Date: 02-05-01   Time: 23:03
+ * Updated in $/Perl/MSSQL/DBlib
+ * Moved around #include to get things to work with VC7 for AS306 and Perl
+ * 5.7.3. Added some experiments to possibly remove the restart problem
+ * with PerlScript (no success this far, though.)
+ *
+ * *****************  Version 8  *****************
+ * User: Sommar       Date: 01-10-21   Time: 14:57
+ * Updated in $/Perl/MSSQL/DBlib
+ * Added dbsetmaxprocs, dbgetmaxprocs and dbgetpacket.
+ *
  * *****************  Version 7  *****************
  * User: Sommar       Date: 01-05-01   Time: 22:39
  * Updated in $/Perl/MSSQL/DBlib
@@ -55,13 +85,27 @@
 #else
 // No Perl object? Then fake it!
 // #define CPerlObj int
-#define CPERLarg
+#define CPERLarg void
 #define CPERLarg_
 #define PERL_OBJECT_THIS
 #define PERL_OBJECT_THIS_
 #endif
-#include "win32.h"
 #include <math.h> // VC-5.0 brainmelt
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+
+#include "EXTERN.h"
+#include "perl.h"
+#include "XSUB.h"
+
+#if defined(__cplusplus)
+}
+#endif
+
+#include "win32.h"
 
 // "Polluting" names that were replaced in later Perl versions.
 #include "patchlevel.h"
@@ -91,31 +135,26 @@
 #define PL_sv_undef       sv_undef
 #define PL_na             na
 #define newRV_noinc       newRV
-#endif
 
-
-#define DBNTWIN32
-#include <windows.h>
-
-#undef IN         // Defined by windows.h but confuses us further down.
-#undef OUT        // Ditto
 
 #define WIN32_LEAN_AND_MEAN
-#if defined(__cplusplus) && defined(CORE_PORT)
-extern "C" {
-#endif
-
+#include <windows.h>
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
 
-#if defined(__cplusplus) && defined(CORE_PORT)
-}
 #endif
 
 
+#define DBNTWIN32
 
-#define XS_VERSION "1.008"
+#undef IN         // Defined by windows.h but confuses us further down.
+#undef OUT        // Ditto
+
+
+
+
+#define XS_VERSION "1.009"
 
 #define BOOL     int
 
@@ -171,27 +210,44 @@ typedef struct {
 } options;
 
 
-static LOGINREC *login;
+static DWORD tlsIndex;
+static int no_of_threads = 0;
+static CRITICAL_SECTION CS;
+
+// Windows calls this one when we DLL is (un)loaded. (And when threads enters
+// or exists, but we don't care about that.)
+BOOL WINAPI DllMain(
+  HINSTANCE hinstDLL,     // handle to the DLL module
+  DWORD    fdwReason,     // reason for calling function
+  LPVOID   lpvReserved)   // reserved
+{
+  switch (fdwReason) {
+     case DLL_PROCESS_ATTACH:
+        InitializeCriticalSection(&CS);
+        tlsIndex = TlsAlloc();
+        break;
+     case DLL_PROCESS_DETACH:
+        TlsFree(tlsIndex);
+        DeleteCriticalSection(&CS);
+        break;
+     default:
+        break;
+  }
+  return TRUE;
+}
 
 
-// Call back stuff has been borrowed from DB_File.xs. Since this includes a Perl pointer,
-// we are not thread safe.
+// Data that is unique for each thread. This is the login record, the
+// callback handlers and Perl object if we have any.
+typedef struct
+   {
+     LOGINREC *login;
+     SV* err_callback;
+     SV* msg_callback;
 #ifdef PERL_OBJECT
-   typedef struct
-   {
-       SV       * sub;
-       CPerlObj * pPerl;
-   } CallBackInfo;
-   static CallBackInfo err_callback = { 0, 0 } ;
-   static CallBackInfo msg_callback = { 0, 0 } ;
-#else
-   typedef struct
-   {
-       SV    * sub;
-   } CallBackInfo;
-   static CallBackInfo err_callback = { 0} ;
-   static CallBackInfo msg_callback = { 0} ;
+     CPerlObj * pPerl;
 #endif
+   } ThreadData;
 
 // A couple of simplifyed calls for our own use...
 static SV **my_hv_fetch (CPERLarg_ HV *hv, hash_key_id id)
@@ -207,6 +263,24 @@ static SV **my_hv_store (CPERLarg_ HV *hv, hash_key_id id, SV *sv)
 static void my_hv_delete(CPERLarg_ HV *hv, hash_key_id id)
 {
     hv_delete(hv, hash_keys[id], strlen(hash_keys[id]), G_DISCARD);
+}
+
+// TlsGetData wrapper which takes care of error check
+static ThreadData *get_thread_data (const char *vem) {
+   ThreadData *td;
+   DWORD err;
+   td = (ThreadData*) TlsGetValue(tlsIndex);
+   if (td == 0) {
+      err = GetLastError();
+#ifndef PERL_OBJECT
+      croak("TlsGetData failed with %ld when called from '%s'", err, vem);
+#else
+      // We don't have a Perl object (it comes with the ThreadData we did not get),
+      // and fprintf, exit has been #defined away. So we can't ring the alarm
+      // here. But it will crash in the caller of course.
+#endif
+   }
+   return td;
 }
 
 
@@ -276,24 +350,26 @@ static int err_handler (DBPROCESS  *db,
                         const char *oserrstr)
 {
 
+  ThreadData *td;
+  td = get_thread_data("err_handler");
 #ifdef PERL_OBJECT
-        CPerlObj *pPerl = err_callback.pPerl;
+  CPerlObj *pPerl = td->pPerl;
 #endif
 
-    if(err_callback.sub)        /* a perl error handler has been installed */
-    {
-        dSP;
-        SV *rv, *rv_save;
-        SV *sv;
-        HV *hv;
-        int retval, count;
+  if (td->err_callback)        /* a perl error handler has been installed */
+  {
+       dSP;
+       SV *rv, *rv_save;
+       SV *sv;
+       HV *hv;
+       int retval, count;
 
-        ENTER;
-        SAVETMPS;
-        PUSHMARK(sp);
+       ENTER;
+       SAVETMPS;
+       PUSHMARK(sp);
 
-        if(db && !DBDEAD(db))
-        {
+       if(db && !DBDEAD(db))
+       {
             // Let's see if we have a Perl handle saved.
             rv = rv_save = (SV *) dbgetuserdata(db);
             if (rv) {
@@ -313,7 +389,6 @@ static int err_handler (DBPROCESS  *db,
             XPUSHs(&PL_sv_undef);
         }
 
-
         XPUSHs(sv_2mortal (newSViv (severity)));
         XPUSHs(sv_2mortal (newSViv (dberr)));
         XPUSHs(sv_2mortal (newSViv (oserr)));
@@ -328,7 +403,7 @@ static int err_handler (DBPROCESS  *db,
 
         PUTBACK;
 
-        if ((count = perl_call_sv(err_callback.sub, G_SCALAR)) != 1)
+        if ((count = perl_call_sv(td->err_callback, G_SCALAR)) != 1)
            croak("An error handler can't return a LIST.");
         SPAGAIN;
         retval = POPi;
@@ -346,6 +421,7 @@ static int err_handler (DBPROCESS  *db,
         return retval;
     }
 
+    // This is the standard error handler.
     if ((db == NULL) || (DBDEAD(db))) {
         if (dberrstr) {
             PerlIO_printf(PerlIO_stderr(), "DB-Library error %d:\n\t%s\n",
@@ -373,11 +449,13 @@ static int msg_handler (DBPROCESS   *db,
                         DBUSMALLINT  line)
 {
 
+    ThreadData *td;
+    td = get_thread_data("msg_handler");
 #ifdef PERL_OBJECT
-        CPerlObj *pPerl = msg_callback.pPerl;
+    CPerlObj *pPerl = td->pPerl;
 #endif
 
-    if (msg_callback.sub)        /* a perl error handler has been installed */
+    if (td->msg_callback)        /* a perl error handler has been installed */
     {
         dSP;
         SV * rv, *rv_save;
@@ -429,7 +507,7 @@ static int msg_handler (DBPROCESS   *db,
         XPUSHs(sv_2mortal (newSViv (line)));
 
         PUTBACK;
-        if((count = perl_call_sv(msg_callback.sub, G_SCALAR)) != 1)
+        if((count = perl_call_sv(td->msg_callback, G_SCALAR)) != 1)
             croak("A msg handler cannot return a LIST");
         SPAGAIN;
         retval = POPi;
@@ -446,6 +524,8 @@ static int msg_handler (DBPROCESS   *db,
 
         return retval;
     }
+
+    // Here follows the default message handler.
 
     /* Don't print any message if severity == 0 */
     if (!severity)
@@ -689,55 +769,96 @@ static void get_mssqlperloptions (CPERLarg_
 
 static void initialize (CPERLarg)
 {
-    if(!login)
-    {
-        SV *sv;
+   SV *sv;
+   ThreadData *td;
+   BOOL        stat;
+   DWORD       err;
 
-        if(dbinit() == FAIL)
-            croak("Can't initialize dblibrary...");
-        dberrhandle(err_handler);
-        dbmsghandle(msg_handler);
+   // Get thread-local buffer.
+   New(902, td, sizeof(ThreadData), ThreadData);
+   stat = TlsSetValue(tlsIndex, (LPVOID) td);
+   if (! stat) {
+      err = GetLastError();
+      croak("TlsSetValue returned error %x", err);
+   }
+
+   // Initate thread data.
+   td->login = NULL;
+   td->err_callback = 0;
+   td->msg_callback = 0;
 #ifdef PERL_OBJECT
-        err_callback.pPerl = PERL_OBJECT_THIS;
-        msg_callback.pPerl = PERL_OBJECT_THIS;
+   td->pPerl = PERL_OBJECT_THIS;
 #endif
 
-        login = dblogin();
-        DBSETLUSER(login, NULL);
-        DBSETLPWD(login, NULL);
-        DBSETLHOST(login, getenv("COMPUTERNAME"));
+   // Init DB-Library if we are the first player.
+   EnterCriticalSection(&CS);
+   if (no_of_threads++ == 0) {
+      if(dbinit() == FAIL) {
+          croak("Can't initialize dblibrary...");
+      }
+      // Set up the error handlers once for all.
+      dberrhandle(err_handler);
+      dbmsghandle(msg_handler);
+   }
+   LeaveCriticalSection(&CS);
 
-        if (sv = perl_get_sv("0", FALSE))
-        {
-            char scriptname[2048];
-            char *p;
-            strcpy(scriptname, SvPV(sv, PL_na));
+   // Set up LOGINREC struct for this thread.
+   td->login = dblogin();
+   DBSETLUSER(td->login, NULL);
+   DBSETLPWD(td->login, NULL);
+   DBSETLHOST(td->login, getenv("COMPUTERNAME"));
 
-            // Strip out any directory parts, look for both kinds of slahses to be sure.
-            if (p = strrchr(scriptname, '/'))
-               ++p;
-            else if (p = strrchr(scriptname, '\\'))
-               ++p;
-            else if (p = strrchr(scriptname, ':'))
-                ++p;
-            else
-                p = scriptname;
+   // Get applciation name, to be name of script, taken from Perl var $0.
+   if (sv = perl_get_sv("0", FALSE))
+   {
+      char *p;
+      char scriptname[2048];
+      strcpy(scriptname, SvPV(sv, PL_na));
 
-            // The script name must not be longer than MAXNAME - 1
-            if ((int)strlen(p) > MAXNAME - 1)
-                p[MAXNAME - 1] = 0;
-            DBSETLAPP(login, p);
-        }
-        if ((sv = perl_get_sv("MSSQL::DBlib::Version", TRUE)))
-        {
-            char buff[256];
-            sprintf(buff, "This is MSSQL::DBlib, version %s\n\nCopyright (c) 1991-1995 Michael Peppler\nCopyright (c) 1996 Christian Mallwitz, Intershop GmbH\nCopyright (c) 1997-2001 Erland Sommarskog\n",
-                    XS_VERSION);
-            sv_setnv(sv, atof(XS_VERSION));
-            sv_setpv(sv, buff);
-            SvNOK_on(sv);
-        }
-    }
+      // Strip out any directory parts, look for both kinds of slahses to be sure.
+      if (p = strrchr(scriptname, '/'))
+         ++p;
+      else if (p = strrchr(scriptname, '\\'))
+         ++p;
+      else if (p = strrchr(scriptname, ':'))
+          ++p;
+      else
+          p = scriptname;
+
+      // The application name must not be longer than MAXNAME - 1
+      if ((int)strlen(p) > MAXNAME - 1)
+          p[MAXNAME - 1] = 0;
+
+      DBSETLAPP(td->login, p);
+   }
+
+   // Set Version string.
+   if (sv = perl_get_sv("MSSQL::DBlib::Version", TRUE))
+   {
+        char buff[256];
+        sprintf(buff, "This is MSSQL::DBlib, version %s\n\nCopyright (c) 1991-1995 Michael Peppler\nCopyright (c) 1996 Christian Mallwitz, Intershop GmbH\nCopyright (c) 1997-2003 Erland Sommarskog\n",
+                XS_VERSION);
+        sv_setnv(sv, atof(XS_VERSION));
+        sv_setpv(sv, buff);
+        SvNOK_on(sv);
+   }
+
+}
+
+static void finalize (CPERLarg)
+{
+   // Called from image_rundown which is activated by the END section in DBlib.pm.
+   ThreadData *td = get_thread_data("finalize");
+
+   // Might alrady have been freed up?
+   dbfreelogin(td->login);
+   Safefree(td);
+
+   EnterCriticalSection(&CS);
+   if (--no_of_threads == 0) {
+      dbwinexit();
+   }
+   LeaveCriticalSection(&CS);
 }
 
 
@@ -770,8 +891,11 @@ static SV* set_up_hv(CPERLarg_ char* pack, DBPROCESS* dbproc)
 
 MODULE = MSSQL::DBlib           PACKAGE = MSSQL::DBlib
 
+PROTOTYPES: ENABLE
+
 BOOT:
 initialize(PERL_OBJECT_THIS);
+
 
 
 void
@@ -788,6 +912,7 @@ dblogin(pack="MSSQL::DBlib", sv_user=NULL, sv_pwd=NULL, sv_server=NULL, sv_appna
     char *pwd     = NULL;
     char *server  = NULL;
     char *appname = NULL;
+    ThreadData *td = get_thread_data("dblogin");
 
     if (sv_user    && SvOK(sv_user))    user    = (char *) SvPV(sv_user, PL_na);
     if (sv_pwd     && SvOK(sv_pwd))     pwd     = (char *) SvPV(sv_pwd, PL_na);
@@ -795,18 +920,18 @@ dblogin(pack="MSSQL::DBlib", sv_user=NULL, sv_pwd=NULL, sv_server=NULL, sv_appna
     if (sv_appname && SvOK(sv_appname)) appname = (char *) SvPV(sv_appname, PL_na);
 
     if (user && *user)
-       DBSETLUSER(login, user);
+       DBSETLUSER(td->login, user);
 
     if(pwd && *pwd)
-       DBSETLPWD(login, pwd);
+       DBSETLPWD(td->login, pwd);
 
     if(server && !*server)
        server = NULL;
 
     if(appname && *appname)
-       DBSETLAPP(login, appname);
+       DBSETLAPP(td->login, appname);
 
-    if(!(dbproc = dbopen(login, server)))
+    if(!(dbproc = dbopen(td->login, server)))
     {
         ST(0) = sv_newmortal();
     }
@@ -826,6 +951,7 @@ dbopen(pack="MSSQL::DBlib", sv_server=NULL, sv_appname=NULL)
     DBPROCESS *dbproc;
     char *  server  = NULL;
     char *  appname = NULL;
+    ThreadData *td = get_thread_data("dbopen");
 
     if (sv_server  && SvOK(sv_server))  server  = (char *) SvPV(sv_server, PL_na);
     if (sv_appname && SvOK(sv_appname)) appname = (char *) SvPV(sv_appname, PL_na);
@@ -834,9 +960,9 @@ dbopen(pack="MSSQL::DBlib", sv_server=NULL, sv_appname=NULL)
         server = NULL;
 
     if(appname && *appname)
-        DBSETLAPP(login, appname);
+        DBSETLAPP(td->login, appname);
 
-    if(!(dbproc = dbopen(login, server)))
+    if(!(dbproc = dbopen(td->login, server)))
     {
         ST(0) = sv_newmortal();
     }
@@ -1413,7 +1539,6 @@ DESTROY(dbp)
     DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp, 0);
     SV   **svp;
     char *p;
-    BYTE **colPtr;
     int  skip;
     HV   *hv = (HV *) SvRV(dbp);
 
@@ -1650,12 +1775,13 @@ CODE:
 {
     char *name;
     SV   *ret = NULL;
+    ThreadData *td = get_thread_data("err_handle");
 
-    if (err_callback.sub)
-       ret = newSVsv(err_callback.sub);
+    if (td->err_callback)
+       ret = newSVsv(td->err_callback);
 
     if (! SvOK(err_handle))
-       err_callback.sub = NULL;
+       td->err_callback = NULL;
     else {
        if (! SvROK(err_handle)) {
           name = SvPV(err_handle, PL_na);
@@ -1669,11 +1795,11 @@ CODE:
           }
        }
 
-       if (err_callback.sub == (SV*) NULL) {
-          err_callback.sub = newSVsv(err_handle);
+       if (td->err_callback == (SV*) NULL) {
+          td->err_callback = newSVsv(err_handle);
        }
        else {
-          sv_setsv(err_callback.sub, err_handle);
+          sv_setsv(td->err_callback, err_handle);
        }
     }
 
@@ -1690,13 +1816,14 @@ CODE:
 {
     char *name;
     SV   *ret = NULL;
+    ThreadData *td = get_thread_data("msg_handle");
 
-    if (msg_callback.sub) {
-       ret = newSVsv(msg_callback.sub);
+    if (td->msg_callback) {
+       ret = newSVsv(td->msg_callback);
     }
 
     if (! SvOK(msg_handle)) {
-       msg_callback.sub = NULL;
+       td->msg_callback = NULL;
     }
     else {
        if (! SvROK(msg_handle)) {
@@ -1711,11 +1838,11 @@ CODE:
           }
        }
 
-       if (msg_callback.sub == (SV*) NULL) {
-          msg_callback.sub = newSVsv(msg_handle);
+       if (td->msg_callback == (SV*) NULL) {
+          td->msg_callback = newSVsv(msg_handle);
        }
        else {
-          sv_setsv(msg_callback.sub, msg_handle);
+          sv_setsv(td->msg_callback, msg_handle);
        }
     }
 
@@ -1731,7 +1858,8 @@ DBSETLAPP(app)
     char * app
   CODE:
 {
-    RETVAL = DBSETLAPP(login, app);
+    ThreadData *td = get_thread_data("DBSETLAPP");
+    RETVAL = DBSETLAPP(td->login, app);
 }
  OUTPUT:
 RETVAL
@@ -1742,7 +1870,8 @@ DBSETLHOST(cough)
     char * cough
   CODE:
 {
-    RETVAL = DBSETLHOST(login, cough);
+    ThreadData *td = get_thread_data("DBSETLHOST");
+    RETVAL = DBSETLHOST(td->login, cough);
 }
  OUTPUT:
 RETVAL
@@ -1753,7 +1882,8 @@ DBSETLFALLBACK(onoff)
     char * onoff
   CODE:
 {
-    RETVAL = DBSETLFALLBACK(login, onoff);
+    ThreadData *td = get_thread_data("DBSETLFALLBACK");
+    RETVAL = DBSETLFALLBACK(td->login, onoff);
 }
  OUTPUT:
 RETVAL
@@ -1764,7 +1894,8 @@ DBSETLNATLANG(language)
         char *  language
   CODE:
 {
-    RETVAL = DBSETLNATLANG(login, language);
+    ThreadData *td = get_thread_data("DBSETLNATLANG");
+    RETVAL = DBSETLNATLANG(td->login, language);
 }
  OUTPUT:
 RETVAL
@@ -1775,18 +1906,30 @@ DBSETLPACKET(pack_size)
     unsigned short pack_size
   CODE:
 {
-    RETVAL = DBSETLPACKET(login, pack_size);
+    ThreadData *td = get_thread_data("DBSETLPACKET");
+    RETVAL = DBSETLPACKET(td->login, pack_size);
 }
  OUTPUT:
 RETVAL
 
+unsigned int
+dbgetpacket(dbp)
+   SV* dbp;
+ CODE:
+{
+    DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);
+    RETVAL = dbgetpacket(dbproc);
+}
+  OUTPUT:
+RETVAL
 
 int
 DBSETLPWD(pwd)
     char * pwd
   CODE:
 {
-    RETVAL = DBSETLPWD(login, pwd);
+    ThreadData *td = get_thread_data("DBSETLPWD");
+    RETVAL = DBSETLPWD(td->login, pwd);
 }
  OUTPUT:
 RETVAL
@@ -1795,7 +1938,8 @@ int
 DBSETLSECURE()
   CODE:
 {
-    RETVAL = DBSETLSECURE(login);
+    ThreadData *td = get_thread_data("DBSETLSECURE");
+    RETVAL = DBSETLSECURE(td->login);
 }
  OUTPUT:
 RETVAL
@@ -1806,7 +1950,8 @@ DBSETLTIME(seconds)
     unsigned long seconds
   CODE:
 {
-    RETVAL = DBSETLTIME(login, seconds);
+    ThreadData *td = get_thread_data("DBSETLTIME");
+    RETVAL = DBSETLTIME(td->login, seconds);
 }
  OUTPUT:
 RETVAL
@@ -1816,7 +1961,8 @@ DBSETLUSER(user)
     char * user
   CODE:
 {
-    RETVAL = DBSETLUSER(login, user);
+    ThreadData *td = get_thread_data("DBSETLUSER");
+    RETVAL = DBSETLUSER(td->login, user);
 }
  OUTPUT:
 RETVAL
@@ -1827,7 +1973,8 @@ DBSETLVERSION(version)
       int version
   CODE:
 {
-    RETVAL = DBSETLVERSION(login, version);
+    ThreadData *td = get_thread_data("DBSETLVERSION");
+    RETVAL = DBSETLVERSION(td->login, version);
 }
  OUTPUT:
 RETVAL
@@ -1844,8 +1991,25 @@ int
 dbsetlogintime(seconds)
         int     seconds
 
+int
+dbsetmaxprocs(maxprocs)
+     short maxprocs
+
+short
+dbgetmaxprocs ()
+
 void
 dbexit()
+
+void
+image_rundown()
+  CODE:
+{
+   // image_rundown is not exported, but called from the END section of
+   // DBlib.pm
+   finalize(PERL_OBJECT_THIS);
+}
+
 
 int
 dbrpcparam(dbp, sv_parname, status, type, maxlen, datalen, sv_value)
@@ -2023,7 +2187,8 @@ BCP_SETL(state)
         int     state
   CODE:
 {
-    RETVAL = BCP_SETL(login, state);
+    ThreadData *td = get_thread_data("BCP_SETL");
+    RETVAL = BCP_SETL(td->login, state);
 }
  OUTPUT:
 RETVAL
@@ -2315,9 +2480,10 @@ dbrpwset(srvname, pwd)
 // Note: this routine is undocumented in Microsoft docs. It does compile, thhough.
 // It was left out from the export list of MSSQL::DBlib 1.000, and with 1.005
 // it was removed from the docs as well.
+    ThreadData *td = get_thread_data("dbrpwset");
     if(!srvname || strlen(srvname) == 0)
         srvname = NULL;
-    RETVAL = dbrpwset(login, srvname, pwd, strlen(pwd));
+    RETVAL = dbrpwset(td->login, srvname, pwd, strlen(pwd));
 }
   OUTPUT:
 RETVAL
@@ -2326,7 +2492,8 @@ void
 dbrpwclr()
   CODE:
 {
-    dbrpwclr(login);
+    ThreadData *td = get_thread_data("dbrpwclr");
+    dbrpwclr(td->login);
 }
 
 
@@ -2357,6 +2524,7 @@ open_commit(pack="MSSQL::DBlib", sv_user=NULL, sv_pwd=NULL, sv_server=NULL, sv_a
     char *  pwd     = NULL;
     char *  server  = NULL;
     char *  appname = NULL;
+    ThreadData *td = get_thread_data("open_commit");
 
     if (sv_user    && SvOK(sv_user))    user    = (char *) SvPV(sv_user, PL_na);
     if (sv_pwd     && SvOK(sv_pwd))     pwd     = (char *) SvPV(sv_pwd, PL_na);
@@ -2364,18 +2532,18 @@ open_commit(pack="MSSQL::DBlib", sv_user=NULL, sv_pwd=NULL, sv_server=NULL, sv_a
     if (sv_appname && SvOK(sv_appname)) appname = (char *) SvPV(sv_appname, PL_na);
 
     if(user && *user)
-       DBSETLUSER(login, user);
+       DBSETLUSER(td->login, user);
 
     if(pwd && *pwd)
-       DBSETLPWD(login, pwd);
+       DBSETLPWD(td->login, pwd);
 
     if(server && !*server)
        server = NULL;
 
     if(appname && *appname)
-       DBSETLAPP(login, appname);
+       DBSETLAPP(td->login, appname);
 
-    if(!(dbproc = open_commit(login, server)))
+    if(!(dbproc = open_commit(td->login, server)))
     {
         ST(0) = sv_newmortal();
     }

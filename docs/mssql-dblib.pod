@@ -1,7 +1,18 @@
-$Header: /Perl/MSSQL/docs/mssql-dblib.pod 7     01-05-05 18:30 Sommar $
-
-$History: mssql-dblib.pod $
+# $Header: /Perl/MSSQL/docs/mssql-dblib.pod 9     03-01-01 16:01 Sommar $
+#
+# $History: mssql-dblib.pod $
 # 
+# *****************  Version 9  *****************
+# User: Sommar       Date: 03-01-01   Time: 16:01
+# Updated in $/Perl/MSSQL/docs
+# Updated for MSSQL 1.009.
+#
+# *****************  Version 8  *****************
+# User: Sommar       Date: 01-10-21   Time: 14:57
+# Updated in $/Perl/MSSQL/docs
+# Added dbgetpacket, dbsetmaxprocs, dbgetmaxprocs and a note on
+# dbsetlpacket.
+#
 # *****************  Version 7  *****************
 # User: Sommar       Date: 01-05-05   Time: 18:30
 # Updated in $/Perl/MSSQL/docs
@@ -67,6 +78,15 @@ MSSQL::DBlib has an heir module, MSSQL::Sqllib which reduces sending
 queries to SQL Server to one call, including error handling. See further
 L<mssql-sqllib>.
 
+B<CAVEAT> Use of DB-Library is deprecated by Microsoft, and you do not
+get full support for all datatypes and other features in SQL 7 and SQL 2000
+with DB-Library, and thus not with MSSQL::DBlib. Thus you should probably
+not use MSSQL::DBlib for new development.
+
+As far as the restrictions apply directly to MSSQL::DBlib, I discuss them
+below. There is also a summary on L<mssql-sqllib>. For a full discussion,
+see SQL Server Books Online.
+
 =head1 MSSQL::DBlib
 
 A simple Perl script using MSSQL::DBlib could look like this:
@@ -99,12 +119,6 @@ are often brief in this document. Please refer to the I<DB-Library for C> in
 Books Online or in the printed documentation for complete information
 on each routine.
 
-B<NOTE ON SQL 7 and beyond:> With SQL Server 7, Microsoft settled on not keeping
-DB-Library up in pace with the development of the server. For instance, new
-datatypes are not fully supported. It is inevitable that these restrictions
-apply to MSSQL::DBlib as well. These restrictions are discussed with the
-functions they apply to, as far as I am aware of them.
-
 =head2 Standard Routines
 
 =head3 dblogin dbopen
@@ -126,14 +140,16 @@ L</dblogin>. By default, MSSQL::DBlib sets the hostname to value of the
 environment variable COMPUTERNAME.
 
 If you don't provide a server name, DB-Library will apply its defaults.
-$server may refer to a named instance, for instance MYMACHINE\SECOND,
-B<but:> Named instances were introduced in SQL2000, and the official word from
-Microsoft is that named instances are not supported with DB-Library.
-However, I have yet to fail to connect to a named instance.
+C<$server> may refer to a named instance, for instance MYMACHINE\SECOND.
+B<Note:> Named instances were introduced in SQL2000, and according
+to Books Online, named instances are not supported with DB-Library.
+However, it appears that Microsoft did actually change DB-Library to
+support named instances. If you get problems, you can always use the
+I<Client Network Utility> to set up an alias for the named instance.
 
 To use B<Windows NT authentication> (known as "Integrated Security" in
 SQL 6.5), call L</DBSETLSECURE> before calling L</dblogin> or L</dbopen>.
-In this case SQL Server will ignore $user and C<$pwd>.
+In this case SQL Server will ignore C<$user> and C<$pwd>.
 
 L</dblogin> is somewhat confusing if you are acquainted with DB-Library for C.
 To wit, the real call to the DB-Library namesake is in fact performed when
@@ -161,13 +177,13 @@ is, your connection to the server is lost.)
 
     $status = $dbh->dbuse($database)
 
-Make $database the current database.
+Make C<$database> the current database.
 
 =head3 dbcmd
 
    $status = $dbh->dbcmd($sql_cmd)
 
-Appends the string $sql_cmd to the current command buffer of this connection.
+Appends the string C<$sql_cmd> to the current command buffer of this connection.
 
 =head3 dbfreebuf
 
@@ -211,7 +227,7 @@ Checks whether a response to a previous call to L</dbsqlsend> or L</dbrpcsend>(0
 is available, and returns a true value if so, else a false value is returned.
 
 The DB-Library documentation is somewhat inconsistent, but it appears that it
-can be meaningful calling L</dbdataready> before calls L</dbresults> and
+can be meaningful calling L</dbdataready> before calls to L</dbresults> and
 L</dbnextrow2> as well, as these function also waits until the server has
 responded.
 
@@ -251,12 +267,12 @@ L</dbrpcparam>/L</dbrpcsend>.
     %data    = $dbh->dbnextrow(1)
     $dataref = $dbh->dbnextrow($use_hash, 1)
 
-Get the next row from the current result set. If the second parameter $wantref
+Get the next row from the current result set. If the second parameter C<$wantref>
 has a false value, the return value is a list of scalar values. If the first
-parameter $use_hash has a true value, the names of the columns are included
+parameter C<$use_hash> has a true value, the names of the columns are included
 in the list, so that you can receive the data into a hash.
 
-When $wantref has a true value, a reference to an array or a hash is
+When C<$wantref> has a true value, a reference to an array or a hash is
 returned, depending on C<$use_hash>.
 
 The return status from the DB-Library function I<dbnextrow> is available
@@ -273,10 +289,10 @@ further details.
 Get the next row from the current result set and return the status from the
 DB-Library function I<dbnextrow>. On a successful fetch, the data in the row
 is available in C<$dataref>. When a fetch fails (see possible status values below),
-$dataref will be C<undef>.
+C<$dataref> will be C<undef>.
 
-$dataref is a reference to an array (when $use_hash has a false value or is
-omitted) or a hash (when $use_hash has a true value). When returning an
+C<$dataref> is a reference to an array (when C<$use_hash> has a false value or is
+omitted) or a hash (when C<$use_hash> has a true value). When returning an
 array reference, the columns appear in the array, in the same order as they appear in
 the query.
 
@@ -377,7 +393,7 @@ There may still be further result sets to retrieve.
 
    $dbh->dbclrbuf($n)
 
-Clears $n rows from the row buffer. Row buffering only applies if you have set
+Clears C<$n> rows from the row buffer. Row buffering only applies if you have set
 DB-Library option DBBBUFFER with L</dbsetopt>. Note that this function does
 not return any value.
 
@@ -442,37 +458,37 @@ How many columns there are in the current result set.
 
     $type = $dbh->dbcoltype($colid)
 
-Returns the column type of column $colid in the current result set. Constants
+Returns the column type of column C<$colid> in the current result set. Constants
 for the datatypes are declared in MSSQL::DBlib::Const::Datatypes.
 
 =head3 dbcollen
 
     $len = $dbh->dbcollen($colid)
 
-Returns the maximum length (in bytes) of column $colid in the current result
+Returns the maximum length (in bytes) of column C<$colid> in the current result
 set.
 
 =head3 dbcolname
 
    $string = $dbh->dbcolname($colid)
 
-Returns the name of column $colid in the current result set.
+Returns the name of column C<$colid> in the current result set.
 
 =head3 dbstrcpy
 
    $string = $dbh->dbstrcpy [($start [, $numbytes])]
 
-Returns the contents of the command buffer. $start is the position to
+Returns the contents of the command buffer. C<$start> is the position to
 start copying from. Default is 0, the first character in the buffer.
-When negative, $numbytes asks for the entire buffer to be returned.
-When >= 0, at most $numbytes characters are returned. Default is -1,
+When negative, C<$numbytes> asks for the entire buffer to be returned.
+When >= 0, at most C<$numbytes> characters are returned. Default is -1,
 return everything.
 
 =head3 dbsetopt
 
    $status = $dbh->dbsetopt($opt [, $char_val])
 
-Sets option $opt with optional character parameter C<$char_val>. $opt is one
+Sets option C<$opt> with optional character parameter C<$char_val>. C<$opt> is one
 of the option values defined in the DB-Library manual (e.g. DBSTAT,
 DBTEXTSIZE). To get IO statistics from the server on, you would say:
 
@@ -516,23 +532,30 @@ after calling L</dbsetopt>.
 
    $ret = $dbh->dbisopt($opt [, $char_val])
 
-Returns a true value if the option $opt is set.
+Returns a true value if the option C<$opt> is set.
+
+=head3 dbgetpacket
+
+  $size = $dbh->dbgetpacket()
+
+Returns the current packet size of the connection. You can set the
+packet size prior to opening a connection with L</dbsetlpacket>.
 
 =head3 dbgetoff
 
    $offset = $dbh->dbgetoff($offtype, $startfrom)
 
 L</dbgetoff> returns offsets to T-SQL statements in the command buffer.
-$offtype is a constant telling what you want offsets to. These constants
-are defined in MSSQL::DBlib::Const::Offset. $startfrom is where to start
-searching in the command buffer. Typically you would set $startfrom to
-the last returned $offset + 1 for the next search.
+C<$offtype> is a constant telling what you want offsets to. These constants
+are defined in MSSQL::DBlib::Const::Offset. C<$startfrom> is where to start
+searching in the command buffer. Typically you would set C<$startfrom> to
+the last returned C<$offset> + 1 for the next search.
 
 To get offset information, you need to set the option DBOFFSET, please
 refer to Books Online for this.
 
 Note: I've played with this function both in SQL 6.5 and SQL 7 to get
-offsets to T-SQL statements and I didn't the results I got were neither
+offsets to T-SQL statements and the results I got were neither
 useful nor consistent. Use at your own risk.
 
 =head2 Exported Routines
@@ -549,7 +572,7 @@ Installs an error handler and returns the previously installed handler. This
 handler is called when an error occurs in DB-Library itself. To handle errors
 from SQL Server, see L</dbmsghandle>.
 
-$err_handler should be a reference to a Perl C<sub>, or a string containing
+C<$err_handler> should be a reference to a Perl C<sub>, or a string containing
 the name of a Perl C<sub>. In the latter case, specify the name with the
 package component, for instance C<main::my_error_handler>. If you specify
 an unqualified name, and warnings are activated, L</dberrhandle> will print
@@ -565,7 +588,7 @@ C<undef>.
 The error handler you specify should take six parameters:
 
 B<$dbproc>: This is a reference to a hash. The reference may or may not be
-blessed. When $dbproc is blessed, it is the handle you used for calling
+blessed. When C<$dbproc> is blessed, it is the handle you used for calling
 the routine that caused the error. When unblessed it is just a temporary handle,
 containing nothing but a DBPROCESS reference. Thus, if you want to retrieve
 any of the handle attributes, you first need to examine C<ref $dbproc>.
@@ -579,7 +602,7 @@ B<$dberr>: a number identifying the error. Constants for DB-Library errors
 are declared in MSSQL::DBlib::Const::Errors.
 
 B<$oserr>: a number identifying any error from the OS or network level that
-may have occurred. When there is no such error, $oserr is DBNOERR, which is
+may have occurred. When there is no such error, C<$oserr> is DBNOERR, which is
 declared in MSSQL::DBlib::Const::General.
 
 B<$dberrstr>: a string describing the DB-Library error.
@@ -601,7 +624,7 @@ returns the old handler. These messages can arise from server errors,
 RAISERROR or PRINT statements or be output caused by SET SHOWPLAN or SET
 STATISTICS.
 
-$msg_handler should be a reference to a Perl C<sub>, or a string containing
+C<$msg_handler> should be a reference to a Perl C<sub>, or a string containing
 the name of a Perl C<sub>. In the latter case, specify the name with the
 package component, for instance C<main::my_message_handler>. If you specify
 an unqualified name, and warnings are activated, L</dberrhandle> will print
@@ -617,11 +640,11 @@ C<undef>.
 The message handler you specify should take eight parameters:
 
 B<$dbproc>: This is a reference to a hash. The reference may or may not be
-blessed. When $dbproc is blessed, it is the handle you used to call the
+blessed. When C<$dbproc> is blessed, it is the handle you used to call the
 routine that caused the error. When unblessed it is just a temporary handle,
 containing nothing but a DBPROCESS reference. Thus, if you want to
 retrieve any of the handle attributes, you first need to examine C<ref>
-C<$dbproc>. Only when $dbproc is blessed you can call other MSSQL::DBlib
+C<$dbproc>. Only when C<$dbproc> is blessed you can call other MSSQL::DBlib
 routines, however you should be very restrictive with this, as stated in the
 DB-Library documentation.
 
@@ -677,7 +700,7 @@ or L</dbopen>. This name will appear with for instance I<sp_who>.
       $status = DBSETLFALLBACK($onoff)
 
 Turns fallback support on or off for subsequent calls to L</dblogin> or
-L</dbopen>. $onoff should be any of the strings "ON" or "OFF". See Books
+L</dbopen>. C<$onoff> should be any of the strings "ON" or "OFF". See Books
 Online for further details on fallback.
 
 =head3 DBSETLNATLANG
@@ -694,6 +717,13 @@ SQL Server you are connecting to.
 
 Sets the packet size for the TDS protocol for connections created
 with subsequent calls to L</dblogin> or L</dbopen>.
+
+If you do not set the packet size, the default is determined by the
+server-configuration parameter "network packet size", which is 4096
+in its default configuration. However, on SQL7 SP3 and SQL 2000 RTM
+and SP1 there is a bug (see KB article Q308016), which causes this
+parameter to be non-functional, giving a default of 512, which
+usually gives performance less than optimal.
 
 =head3 DBSETLPWD
 
@@ -715,7 +745,7 @@ authentication, and that any provided username and password will be ignored.
    $status = DBSETLTIME($seconds)
 
 Sets the time in seconds for how long MSSQL::DBlib is to wait when connecting
-to the server with L</dblogin> or L</dbopen>. $seconds can also be any of the
+to the server with L</dblogin> or L</dbopen>. C<$seconds> can also be any of the
 constants described in the DB-Library documentation. These are declared in
 MSSQL::DBlib::Const::Timeout.
 
@@ -739,6 +769,21 @@ MSSQL::DBlib: 1) the function I<dbcolinfo> which is not available in MSSQL::DBli
 2) whether the datatypes decimal and numeric are converted to float or not
 when returned to the client. MSSQL::DBlib converts numeric values to float
 itself, so DB-Library's behaviour does not matter.
+
+=head3 dbsetmaxprocs
+
+    $ret = dbsetmaxprocs($maxprocs)
+
+Sets the maximum number of connections you can have open simultaneously
+in your script. The default is 25.
+
+=head3 dbgetmaxprocs
+
+    $maxprocs = dbgetmaxprocs()
+
+Returns the maximum number of connections you can have open simultaneously
+in your script. You can set this value with L</dbsetmaxprocs>.
+
 
 =head3 DBGETTIME
 
@@ -774,14 +819,18 @@ for all your handles that still are in scope. Else you will get an error
 message from DB-Library when the handles eventually goes out of scope,
 for instance when Perl exits.
 
+B<NOTE:> in the consequence with the above note, do not call C<dbexit> at
+all from code that is being called by ActiveState's PerlScript or something
+else which keeps the DLL for MSSQL::DBlib loaded.
+
 =head3 reformat_uniqueid
 
     $GUID = MSSQL::DBlib::reformat_uniqueid($hexstring)
 
-Converts $hexstring which supposedly have been returned by L</dbnextrow2> as
+Converts C<$hexstring> which supposedly have been returned by L</dbnextrow2> as
 the value for a column of the type uniqueidentifier to the regular presentation
-form for a GUID. If $hexstring is already on this format, $hexstring is
-returned unchanged. If $hexstring is not a 32 character long hexstring (or 34
+form for a GUID. If C<$hexstring> is already on this format, C<$hexstring> is
+returned unchanged. If C<$hexstring> is not a 32 character long hexstring (or 34
 with a leading 0x), L</reformat_uniqueid> returns C<undef>.
 
 This routine is not exported by default, so you either have to mention it
@@ -803,16 +852,16 @@ L</bcp_columns>, L</bcp_colfmt> and L</bcp_exec>. Optionally you can
 change parameters with L</bcp_control>. This calling sequence is
 equivavelent to the one in C.
 
-B<Note:> I have made no attempt to find out which of the extentions to the
-datatypes in SQL Server 7, if any, that can be used with MSSQL::DBlib. When
-in doubt assume that none of the novelties work until anything else is proven.
+B<Note:> Assume that you are restricted to use 6.5 datatypes. If this is not
+sufficient use the BCP that comes with SQL7 and SQL2000, the BULK INSERT
+command or the BCP API of ODBC or OLE DB.
 
 =head3 BCP_SETL
 
    $status = BCP_SETL($state)
 
 If you wish to use the BCP routines for a connection, you must call
-C<BCP_SETL> with $state = 1 I<prior to> creating that connection
+C<BCP_SETL> with C<$state> = 1 I<prior to> creating that connection
 with L</dblogin> or L</dbopen>.
 
 This is an exported routine, thus you don't need any handle or package
@@ -822,10 +871,10 @@ reference to call it.
 
    $status = $dbh->bcp_init($table, $datafile, $errfile, $direction)
 
-Initializes a bulk-copy operation. $table is the table you are bulking into
-or out from. $datafile is a file that the data is read from or written to.
+Initializes a bulk-copy operation. C<$table> is the table you are bulking into
+or out from. C<$datafile> is a file that the data is read from or written to.
 Specify C<undef> if you are sending data from variables with L</bcp_sendrow>.
-$errfile is a file for BCP to write error messages to. $direction must
+C<$errfile> is a file for BCP to write error messages to. C<$direction> must
 be one of DB_OUT or DB_IN.
 
 =head3 bcp_meminit
@@ -843,7 +892,7 @@ See F<eg\bcp.pl> for a simple example.
 
    $status = $dbh->bcp_sendrow(@list)
 
-Sends the data in @list to the server. @list is assumed to contain one
+Sends the data in C<@list> to the server. C<@list> is assumed to contain one
 element for each column being updated. To send a NULL value set the
 appropriate element to C<undef>.
 
@@ -874,8 +923,8 @@ and returns the number of rows copied in the last batch.
   $status = $dbh->bcp_control($field, $value)
 
 Changes the default settings for control parameters for a bulk copy between a
-file and SQL Server. The available values for $field are listed below. Note
-that for all parameters, specifying 0 for $value will give you the default
+file and SQL Server. The available values for C<$field> are listed below. Note
+that for all parameters, specifying 0 for C<$value> will give you the default
 value.
 
 B<BCPMAXERRS> The number of errors allowed before giving up. The default is 10. The
@@ -1030,16 +1079,16 @@ You cannot specify the new datatypes nchar, nvarchar and ntext. Pass these
 as SQLCHAR, SQLVARCHAR and SQLTEXT respectively.
 
 B<$maxlen> specifies the maximum length of an OUTPUT value. My empirical tests
-indicate that you can set $maxlen to -1 in all cases, except when specifying
+indicate that you can set C<$maxlen> to -1 in all cases, except when specifying
 NULL for a text or image parameter, when it must be 0.
 
 B<$datalen> is the length of the data you send in. This should be -1 for a
-non-NULL fixed-length datatypes. Specify 0 for $datalen to send NULL for
+non-NULL fixed-length datatypes. Specify 0 for C<$datalen> to send NULL for
 all datatypes. If you want to send an empty string, you need to actually send
-one blank. $datalen cannot exceed 255.
+one blank. C<$datalen> cannot exceed 255.
 
-B<$value> is the value for the parameter. When $datalen is 0, $value is
-ignored. When sending in a binary type, $value may, but does not need to,
+B<$value> is the value for the parameter. When C<$datalen> is 0, C<$value> is
+ignored. When sending in a binary type, C<$value> may, but does not need to,
 include a leading 0x. Note that with DB-Library you cannot pass an empty
 string for a varchar parameter, although SQL Server 7 supports this.
 
@@ -1048,7 +1097,7 @@ string for a varchar parameter, although SQL Server 7 supports this.
     $status = $dbh->dbrpcsend([$wait])
 
 Executes a call to a stored procedure initiated with L</dbrpcinit>. The parameter
-$wait determines if you want to wait for SQL Server to return a reply. The
+C<$wait> determines if you want to wait for SQL Server to return a reply. The
 default is 1, to wait.
 
 When you specify a false value for C<$wait>, you must later call L</dbsqlok>
@@ -1067,12 +1116,12 @@ SQL Server.
 Retrieves the values of the parameters marked as OUTPUT in a stored procedure
 executed with L</dbrpcsend> in the current batch.
 
-If the second parameter $wantref has a false value, the return value is a
-list of scalar values. If the first parameter $use_hash has a true value,
+If the second parameter C<$wantref> has a false value, the return value is a
+list of scalar values. If the first parameter C<$use_hash> has a true value,
 the names of the parameters are included in the list, so that you can receive
 the data into a hash.
 
-When $wantref has a true value, a reference to an array or a hash is
+When C<$wantref> has a true value, a reference to an array or a hash is
 returned, depending on C<$use_hash>.
 
 This function is deprecated and provided for compatibility. The preferred
@@ -1086,7 +1135,7 @@ L</dbretdata2> for further details.
 Retrieves the values of the parameters marked as OUTPUT in a stored procedure
 executed with L</dbrpcsend> in the current batch.
 
-L</dbretdata2> returns a reference, which is a reference to an array if $use_hash
+L</dbretdata2> returns a reference, which is a reference to an array if C<$use_hash>
 has a false value or is omitted. Else it is a reference to a hash with the
 parameter names (including leading B<@>) as keys. If you did not provide any
 parameter names with L</dbrpcparam>, the keys will be "Par I<n>", where I<n>
@@ -1157,10 +1206,10 @@ end you use L</dbreadtext> in place of L</dbnextrow2>.
 To use to L</dbreadtext> you must submit a query with the one single
 column, the text/image column you want to retrieve.
 
-$buf will receive with chunk of data. $len is how much data you want back
+C<$buf> will receive with chunk of data. C<$len> is how much data you want back
 at a maximum.
 
-The return value $bytes can have any of these values:
+The return value C<$bytes> can have any of these values:
 
    >0            Number of bytes read.
    0             End of row reached.
@@ -1177,20 +1226,20 @@ as well.
 Inserts or updates data in a TEXT or IMAGE column. All existing data in the
 column is over-written by  the new value.
 
-$colname is the name of the text column, including table name.
+C<$colname> is the name of the text column, including table name.
 
-$dbh_2 is the handle of another server connection, and which should have an
-active query against the table of the text column. $colname should be
+C<$dbh_2> is the handle of another server connection, and which should have an
+active query against the table of the text column. C<$colname> should be
 part of that result set.
 
-$colnum is the number of the text column I<in that query> (thus, not in
+C<$colnum> is the number of the text column I<in that query> (thus, not in
 the table).
 
-$text is the text to be inserted.
+C<$text> is the text to be inserted.
 
-$log only has importance if the recovery model of the database is
+C<$log> only has importance if the recovery model of the database is
 BULK_LOGGED (in SQL7 and earlier this corresponds to the database
-option I<select into/bulk copy> set to true). In this mode $log
+option I<select into/bulk copy> set to true). In this mode C<$log>
 controls whether the operation is actually logged or not. The default is
 0, not to log. In other recovery models, L</dbwritetext> is always fully
 logged in the transaction log.
@@ -1210,8 +1259,8 @@ See also F<eg\wtext.pl> for a complete script.
    $status = $dbh->dbpreptext($colname, $dbh_2, $colnum, $size, [, $log])
 
 Prepares the insertion/update of text for later calls with L</dbmoretext>.
-C<$colname>, C<$dbh_2>, $colnum and $log works in the same way as with
-L</dbwritetext>. $size is the size in bytes of the data you intend to
+C<$colname>, C<$dbh_2>, C<$colnum> and C<$log> works in the same way as with
+L</dbwritetext>. C<$size> is the size in bytes of the data you intend to
 insert with L</dbmoretext>.
 
 Example of usage:
@@ -1238,8 +1287,8 @@ finished calling L</dbmoretext>.
    $status = dbh->dbmoretext($len | undef, $buf);
 
 Adds a chunk of data to a text or image column. You must first have
-called L<dbpreptext> to initiate the operation. $buf is the data you
-send in, $len is the length of the data you write. You can pass C<undef>
+called L<dbpreptext> to initiate the operation. C<$buf> is the data you
+send in, C<$len> is the length of the data you write. You can pass C<undef>
 instead of C<$len>, in which case L</dbmoretext> will use take the length
 from C<$buf>. (The interface may appear illogical, but I've preserved the
 parameter order from Sybperl.)
@@ -1250,16 +1299,16 @@ parameter order from Sybperl.)
                                 [$insert_offset, [$delete_length, [, $log]]])
 
 Updates a portion of a text/image column. For the parameters C<$colname>,
-C<$dbh_2>, C<$colnum>, $text and $log please see the description for L</dbwritetext.>
+C<$dbh_2>, C<$colnum>, C<$text> and C<$log> please see the description for L</dbwritetext.>
 
-$insert_offset specifies where in the column $text is to be inserted and
+C<$insert_offset> specifies where in the column C<$text> is to be inserted and
 is an offset in bytes from beginning of the text/image value. An offset of
 0 means the beginning of the string. -1, which is the default, means that
-$text will be appended to the existing value.
+C<$text> will be appended to the existing value.
 
-$delete_length specifies how many bytes that are to be deleted from the
+C<$delete_length> specifies how many bytes that are to be deleted from the
 existing value in the column. The deletion starts at C<$insert_offset>. -1
-menas that all bytes from $insert_offset to the end are deleted. The
+menas that all bytes from C<$insert_offset> to the end are deleted. The
 default is 0, which means that no bytes are deleted.
 
 =head3 dbprepupdatetext
@@ -1269,7 +1318,7 @@ default is 0, which means that no bytes are deleted.
 
 L</dbprepupdatetext> corresponds to L</dbupdatetext> as L</dbpreptext>
 corresponds to L</dbwritetext>. That is, you are supposed to specify how
-much data you want to insert with $size and then call L</dbmoretext> to
+much data you want to insert with C<$size> and then call L</dbmoretext> to
 insert the data.
 
 However... I have not been able to use this function successfully. As I see
@@ -1286,10 +1335,10 @@ L</dbprepupdatetext>, but you are warned.
    $status = $dbh->dbdeletetext($colname, $dbh_2, $colnum,
                                 $insert_offset, $delete_length, [, $log])
 
-Deletes $delete_length bytes from the text/image column, starting at
-$insert_offset which must be >= 0. No new bytes are inserted to the column.
+Deletes C<$delete_length> bytes from the text/image column, starting at
+C<$insert_offset> which must be >= 0. No new bytes are inserted to the column.
 
-For C<$colname>, C<$dbh_2>, $colnum and C<$log>, see L</dbwritetext>.
+For C<$colname>, C<$dbh_2>, C<$colnum> and C<$log>, see L</dbwritetext>.
 
 =head3 dbcopytext
 
@@ -1300,19 +1349,19 @@ For C<$colname>, C<$dbh_2>, $colnum and C<$log>, see L</dbwritetext>.
 
 L</dbcopytext> copies text from one text column to another.
 
-$colnamedest is the name of the table and column to copy to. $colnamesrc is
+C<$colnamedest> is the name of the table and column to copy to. C<$colnamesrc> is
 the table and column to copy from.
 
-$dbh_dest is the handle of another server connection, and which should have an
-active query against the destination column. $colnamedest should be
+C<$dbh_dest> is the handle of another server connection, and which should have an
+active query against the destination column. C<$colnamedest> should be
 part of that result set.
 
-$colnumdest is the number of $colnamedest I<in that query> (thus, not in
+C<$colnumdest> is the number of C<$colnamedest> I<in that query> (thus, not in
 the table).
 
-$dbh_src and $colnumsrc are the equivalent for the source column.
+C<$dbh_src> and C<$colnumsrc> are the equivalent for the source column.
 
-C<$insert_offset>, $delete_length and $log works as for L</dbupdatetext>.
+C<$insert_offset>, C<$delete_length> and C<$log> works as for L</dbupdatetext>.
 
 Example:
 
@@ -1369,7 +1418,8 @@ Example:
 These functions are provided for compatibility with Sybperl only. Descriptions
 of them are available in the DB-Library documentation that comes with SQL
 Server 6.0 and 6.5. However, in Books Online for SQL Server 7, they are
-absent.
+absent. I have never tested them, never will I. Use of them is strongly
+deprecated.
 
 =head2 Handle Attributes
 
@@ -1556,6 +1606,51 @@ with the following kludge:
 Note that you must include MSSQL::DBlib::Const::General after the other constant
 modules for the kludge to work.
 
+=head1 Notes on threading and PerlScript
+
+MSSQL::DBlib is B<not> thread-safe with scripts that uses C<use threads>.
+
+However, you can use it with ActiveState's PerlScripts in things like
+DTS or ISAPI. Here the DLL for MSSQL::DBlib remains loaded between
+invocations, and each new invocation is a new thread. Obviously, you can
+have parallel invocations. Here are some things to keep in mind:
+
+=over 4
+
+=item *
+
+A routine in DB-Library concerns either a DBPROCESS, a LOGINREC, or
+DB-Library as a whole. The routines in the first two category concerns
+the current thread only. In MSSQL::DBlib, you never see the LOGINREC,
+but it is there under the covers. The routines that concerns DB-Library
+on global level will affect all threads. They are: C<dbsettime>,
+C<dbsetlogintime>, C<dbsetmaxprocs>, C<DBGETTIME>, C<dbgetmaxprocs>
+and C<dbexit>. Thus some care is needed when calling these functions.
+
+=item *
+
+Never call C<dbexit> in the context of PerlScript. You are closing down
+DB-Library, and you could wreck another thread's handle.
+
+=item *
+
+When you set up an error or message handler with C<dberrhandle> or
+C<dbmghandle>, the handler will be local to the thread. (This is
+different from how you work with DB-Library in C.)
+
+=item *
+
+If you are expecting many parallel executions, you may need to change
+the limit of current DBPROCESSes with C<dbsetmaxprocs>. The default
+value is 25.
+
+=back
+
+Finally a caveat: I have actually only tested with DTS. If you run into
+problems with ISAPI, there is a workaround. Set this registry key to 0:
+
+   HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/W3SVC/Parameters/CacheExtensions
+
 =head1 BUGS
 
 If you call L</dbexit> without calling L</dbclose> on your handles, you
@@ -1566,14 +1661,6 @@ a message or error handler, Perl will hang until you kill it with CTRL/C.
 Obviously DB-Library doesn't like its I<dbclose> being called from a error or
 message handler. (I<dbclose> is called implicitly when an object is
 destroyed.)
-
-The 2PC calls have not been tested.
-
-This version of MSSQL::DBlib have been tested SQL 6.5 and SQL 7.0 but
-not with SQL 6.0 or SQL 4.21. Binaries included in the distribution are
-not likely to work with 6.0 and 4.21. You must also remove L</DBSETLFALLBACK>
-to build MSSQL::DBlib with 6.0 and 4.21. 4.21 may require further
-deletions.
 
 =head1 Compatibility with Sybperl
 
@@ -1596,7 +1683,7 @@ error codes the names start with I<SQL>, not I<SYB>.
 
 The following routines available in Sybperl 2.03 are missing:
 
-I<DBSETLCHARSET>, I<bcp_getl>, I<dbgetpacket>, the I<dbmny*> routines,
+I<DBSETLCHARSET>, I<bcp_getl>, the I<dbmny*> routines,
 I<dbrecftos>, I<dbsafestr>, I<dbsetifile>, I<dbversion>, I<dbrpwset>,
 I<dbrpwset>, I<scan_xact>.
 

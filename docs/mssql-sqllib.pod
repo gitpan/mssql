@@ -1,7 +1,12 @@
-$Header: /Perl/MSSQL/docs/mssql-sqllib.pod 7     01-05-05 18:31 Sommar $
-
-$History: mssql-sqllib.pod $
+# $Header: /Perl/MSSQL/docs/mssql-sqllib.pod 8     03-01-01 16:01 Sommar $
+#
+# $History: mssql-sqllib.pod $
 # 
+# *****************  Version 8  *****************
+# User: Sommar       Date: 03-01-01   Time: 16:01
+# Updated in $/Perl/MSSQL/docs
+# Updated for MSSQL 1.009.
+#
 # *****************  Version 7  *****************
 # User: Sommar       Date: 01-05-05   Time: 18:31
 # Updated in $/Perl/MSSQL/docs
@@ -79,10 +84,10 @@ A simple example of using this module:
       use MSSQL::Sqllib;
 
       # Log into the server.
-      sql_init("", "sa", "", "master");
+      my $X = sql_init("", "sa", "", "master");
 
       # Run a query.
-      @x = sql("SELECT dbid, name, crdate FROM sysdatabases");
+      @x = $X->sql("SELECT dbid, name, crdate FROM sysdatabases");
 
       # Just print the results, it's a list of hashes.
       foreach $x (@x) {
@@ -92,15 +97,17 @@ A simple example of using this module:
         print "\n";
       }
 
-It is worth noting that while MSSQL::Sqllib is implemented for one certain RDBMS
-engine, on top of one certain client library, its interface is decently general,
-and should find no problems to be re-implemented with another client library and
-also another RDBMS engine.
+Since MSSQL::Sqllib is based on DB-Library, and Microsoft is no longer
+developing DB-Library, this means that with MSSQL::Sqllib you do not have
+access to all features in SQL7 and SQL2000. See the section L</Restrictions
+with new datatypes> at the end of this document. Thus, you should not
+use MSSQL::Sqllib, unless you are certain that the restrictions will not
+be an issue for you.
 
-That being said, we come to the part where I have to say that due to Microsoft's
-move not to develop DB-Library any further, MSSQL::Sqllib is fairly restricted in
-what it supports of the features added in SQL 7 and later. See the section
-L</SQL 7 and beyond> at the end of this document.
+If you want to use MSSQL::Sqllib in a threaded environment, the short story
+is that you I<cannot> use it with C<use threads> in a Perl script, but you can
+use it in an environment for a thing like ActiveState's PerlScript. Please
+see further L<mssql-dblib/Notes on threading and PerlScript>.
 
 =head1 EXPORT TAGS
 
@@ -192,7 +199,7 @@ L</sql_error_handler> is a configurable handler for DB-Library errors.
 =head2 sql_init
 
     $X = sql_init([$server [, $user [, $password [, $database]]]]);
-    $X = new MSSQL::Sqllib [, $user [, $password [, $database]]]];
+    $X = new MSSQL::Sqllib [$server, [$user [, $password [, $database]]]];
 
 L</sql_init> logs into SQL Server, and performs a number of initializations
 listed below. B<new> simply calls L</sql_init>.
@@ -210,8 +217,8 @@ one exception: for I<sa>, the database will be I<tempdb> to avoid a disaster,
 were you to accidently omit C<$database>.
 
 To use B<Windows NT authentication> (known as "integrated security" MS SQL 6.5),
-call the MSSQL::DBlib routine L<mssql-dblib/DBSETLSECURE> prior to
-calling L</sql_init>.
+call the MSSQL::DBlib routine L<mssql-dblib/DBSETLSECURE> before you call
+L</sql_init>.
 
 The following initializations are performed:
 
@@ -242,31 +249,39 @@ such as the user's default database in SQL Server not being accessible. (If
 you need to continue after a failed login, remember that you can always run
 your L</sql_init> from an C<eval>.)
 
-B<$server> may refer to a named instance, for instance MYMACHINE\SECOND, B<but:>
-Microsoft does not officially support named instances with DB-Library. Nevertheless
-Microsoft have added some code to DB-Library so that it can understand named instances.
-It appears that it works with SQL Server authentication but not Windows NT
-authentication.
+B<$server> may refer to a named instance, for instance MYMACHINE\SECOND.
+Officially, Microsoft does not support named instances in DB-Library, but
+it appears they changed DB-Library to handle it nevertheless. If you run
+into to problems, use the Client Network Utility and set up an alias for
+the named instance.
 
 The return value from L</sql_init> is a blessed reference to a hash, in this
 document usually called a I<handle>. The handle that is created the first time
 L</sql_init> is called becomes the default handle for calls to other routines
-in MSSQL::Sqllib. Thus, in many cases, you don't actually need to take care
-of the handle.
+in MSSQL::Sqllib. This is conventient in throw-away scripts, but for serious
+development, I recomment that you always use a handle when you access the
+other routines. You often need to use the handle anyway, to change the
+attributes, particularly L</errInfo>. In the syntax descriptions below, the
+handles are shown as mandatory.
+
+B<NOTE:> If you use MSSQL::Sqllib from a thing like ActiveState's PerlScript
+you must always use the handle.
 
 =head2 sql
 
-    $resultref = [$X->]sql($sql [, $rowstyle] [, $resultstyle]]);
-    @result    = [$X->]sql($sql [, $rowstyle] [, $resultstyle]]);
-    %result    = [$X->]sql($sql, HASH, SINGLEROW);
+    $resultref = $X->sql($sql [, $rowstyle] [, $resultstyle]]);
+    @result    = $X->sql($sql [, $rowstyle] [, $resultstyle]]);
+    %result    = $X->sql($sql, HASH, SINGLEROW);
 
-    $hashref   = [$X->]sql($sql [, $rowstyle], KEYED, \@keys);
-    %hash      = [$X->]sql($sql [, $rowstyle], KEYED, \@keys);
+    $hashref   = $X->sql($sql [, $rowstyle], KEYED, \@keys);
+    %hash      = $X->sql($sql [, $rowstyle], KEYED, \@keys);
 
-    $retstat   = [$X->]sql($sql [, $rowstyle], \&callback);
+    $retstat   = $X->sql($sql [, $rowstyle], \&callback);
 
 
-B<$sql>, the only mandatory parameter to L</sql>, is a string containing one
+B<$X> is the handle that you got when you called L</sql_init>.
+
+B<$sql> is a string containing one
 or more SQL statements. L</sql> executes them as one batch (thus you cannot
 separate batches with I<go>), and in case of success returns the result set.
 
@@ -274,23 +289,19 @@ By default, if SQL Server or DB-Library signals an error, execution is aborted.
 You can alter this behaviour with the various elemetns of the handle attribute
 L</errInfo>. See this attribute for details.
 
-If you don't provide a handle, L</sql> uses the handle created by the first call
-to L</sql_init>.
-
 For details on how the various data types in SQL Server are returned, see
 the MSSQL::DBlib routine L<mssql-dblib/dbnextrow2>.
 
 The data from SQL Server can be structured in several different ways, as determined
-by the parameters $rowstyle and C<$resultstyle>. $rowstyle determines how individual
-rows appear, $resultstyle how the rows are structured. Below I say that the
-return value for a certain combination is a scalar, array or a hash. In every
+by the parameters C<$rowstyle> and C<$resultstyle>, as detailed below. Below I say
+that the return value for a certain combination is a scalar, array or a hash. In every
 case when I say array or hash, you can always opt for receiving the return
 value in a scalar to get a reference to that array/hash.
 
-In the call syntax above, $rowstyle is shown as coming before C<$resultstyle>.
-However, L</sql> actually permits you to put $rowstyle after C<$resultstyle>.
-This is also true when $resultstyle is KEYED and C<\&callback>. However, $rowstyle
-must come before C<\@keys>.
+In the call syntax above, C<$rowstyle> is shown as coming before C<$resultstyle>.
+However, L</sql> actually permits you to put C<$rowstyle> after C<$resultstyle>.
+This is also true when C<$resultstyle> is KEYED or C<\C<&callback>>. However,
+C<$rowstyle> must come before C<\@keys>.
 
 B<Row style>
 
@@ -317,9 +328,9 @@ appeared in the query with the first column at index 0.
 
 Each row is returned as a scalar value. SCALAR is mainly intended for one-columns
 queries, but if the query has more than one column, they are separated by the
-module attribute C<$MSSQL::Sqllib::SQLSEP>. Initially $SQLSEP has the value
+module attribute C<$MSSQL::Sqllib::SQLSEP>. Initially C<$SQLSEP> has the value
 C<"\022">, a control character. You can set it to a string of any length that
-fit your needs. Note, however, that the value of $SQLSEP I<must not> appear
+fit your needs. Note, however, that the value of C<$SQLSEP> I<must not> appear
 in the actual data.
 
 =back
@@ -365,14 +376,14 @@ structure there is a hash, array or scalar, depending on C<$rowstyle>, with the
 non-key columns of the result set.
 
 Which S<column(s)> that supply the key values, is determined by the parameter
-B<@keys>, which is mandatory for C<KEYED>. For row style C<HASH>, @keys should
+B<@keys>, which is mandatory for C<KEYED>. For row style C<HASH>, C<@keys> should
 hold the name of the key S<column(s)> of the result set. For row style C<LIST>
-and C<SCALAR>, @keys should hold the column number of the S<key(s)>. Column numbers
+and C<SCALAR>, C<@keys> should hold the column number of the S<key(s)>. Column numbers
 start on 1.
 
 A simple example, retrieve all types and their ids:
 
-    %types = sql("SELECT name, type FROM systypes", SCALAR, KEYED, [1]);
+    %types = $X->sql("SELECT name, type FROM systypes", SCALAR, KEYED, [1]);
     foreach $type (keys %types) {
        print "$type:  $types{$type}\n";
     }
@@ -381,12 +392,12 @@ A more complicated case. The table Tbl has the columns key1, key2, key3, val1,
 val2, ... Among other data, we want to retrive the column val4 for the key
 ABC/17/X.
 
-    $result = sql("SELECT * FROM Tbl", HASH, KEYED,
-                  ['key1', 'key2', 'key3']);
+    $result = $X->sql("SELECT * FROM Tbl", HASH, KEYED,
+                      ['key1', 'key2', 'key3']);
     $val4 = $$result{'ABC'}{'17'}{'X'}{'val4'};
 
-The keys you provide in @keys are supposed to be the unique keys of your result
-set, and appear in all rows of the result S<set(s)>. If a key listed in @keys
+The keys you provide in C<@keys> are supposed to be the unique keys of your result
+set, and appear in all rows of the result S<set(s)>. If a key listed in C<@keys>
 does not appear in one of the rows, this is an error, and L</sql> will
 unconditionally abort. If a key value is a duplicate, L</sql> will emit a warning
 about this, if warnings are activated. It is undefined which values that end up in
@@ -416,7 +427,7 @@ value. Else you will get an empty list/hash.
 B<Callbacks>
 
 Instead of a result style, you can provide a callback. L</sql> calls your callback
-in this way, depending on $rowstyle:
+in this way, depending on C<$rowstyle>:
 
        $retstat = &$callback(\%row, $resultset_no);   # HASH
        $retstat = &$callback(\@row, $resultset_no);   # LIST
@@ -498,9 +509,9 @@ number of the COMPUTE BY clause in the query.
 
 =head2 sql_one
 
-    %result = [$X->]sql_one($sql[, HASH]);
-    @result = [$X->]sql_one($sql, LIST);
-    $result = [$X->]sql_one($sql[, SCALAR)];
+    %result = $X->sql_one($sql[, HASH]);
+    @result = $X->sql_one($sql, LIST);
+    $result = $X->sql_one($sql[, SCALAR)];
 
 L</sql_one> is similar to L</sql> with the C<SINGLEROW> result style. However,
 L</sql_one> requires the SQL batch to return exactly one row, and will abort
@@ -509,22 +520,24 @@ batch may return more than one result set, but all but one must be empty.
 
 =head2 sql_sp
 
-   $resultref = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
-                                 [, $rowstyle] [, $resultstyle]);
-   @result    = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
-                                 [, $rowstyle] [, $resultstyle]);
-   %result    = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params],
-                                 HASH, SINGLESET);
+   $resultref = $X->sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
+                               [, $rowstyle] [, $resultstyle]);
+   @result    = $X->sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
+                               [, $rowstyle] [, $resultstyle]);
+   %result    = $X->sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params],
+                               HASH, SINGLESET);
 
-   $hashref   = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
-                                 [, $rowstyle], KEYED, \@keys);
-   %hash      = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
-                                 [,  $rowstyle], KEYED, \@keys);
+   $hashref   = $X->sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
+                               [, $rowstyle], KEYED, \@keys);
+   %hash      = $X->sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
+                               [,  $rowstyle], KEYED, \@keys);
 
-   $retstat   = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
-                                 [, $rowstyle], \&callback);
+   $retstat   = $X->sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
+                               [, $rowstyle], \&callback);
 
-L</sql_sp> calls the stored procedure $sp and retrieves the return status of
+B<$X> is the handle you got from L</sql_init>.
+
+L</sql_sp> calls the stored procedure B<$sp> and retrieves the return status of
 the SP and values of output parameters. To find out datatypes and output
 parameters, L</sql_sp> interrogates the server and caches the parameter profile
 internally in case the same SP is called again. See the handle attribute C<procs>
@@ -533,9 +546,6 @@ for details about caching.
 By default, if an error occurs in SQL Server or in DB-Library, or the procedure
 returns a non-zero value, execution is aborted. This behaviour is controlled
 by various elements the handle attribute L</errInfo>. See further this attribute.
-
-If you don't provide a handle, L</sql_sp> uses the handle created by the
-first call to L</sql_init>.
 
 The various return values of L</sql_sp>, as well as the parameters B<$rowstyle>,
 B<$resultstyle>, B<&callback>, and B<@keys> work exactly in the same way as with
@@ -600,7 +610,7 @@ that prints out the result sets in a fairly simple manner:
           print "\n";
           RETURN_NEXTROW;
        }
-       sql_sp("sp_helpdb", ['tempdb'], HASH, \&print_hash);
+       $X->sql_sp("sp_helpdb", ['tempdb'], HASH, \&print_hash);
 
 And here is an example with a procedure that takes two dates as parameters to
 count the number of records in that interval. Passing NULL means no limit in
@@ -613,23 +623,27 @@ no result sets.
                                @flavour   smallint = NULL,
                                @no_of_rec int      OUTPUT AS
 
-Now we want to know how many records there are from 1997 and on, of all
-flavours:
+Say we want to know how many records there are from 1997 and on, of all
+flavours, and we also want the return value. In T-SQL the call would be:
 
-     sql_sp('putte_sp', ['19970101'], {'@no_of_rec' => \$no_of_rec});
+     EXEC @ret = putte_sp '19970101', @no_of_ref = @no_of_rec OUTPUT
+
+In MSSQL::Sqllib this translates to:
+
+     $X->{errInfo}{checkRetStat} = 0;
+     $X->sql_sp('putte_sp', \$ret, ['19970101'], {'@no_of_rec' => \$no_of_rec});
 
 Notice how we pass a reference to C<$no_of_rec>, rather than the variable
-itself, so we can retrieve the output value later on.
+itself, so we can retrieve the output value later on. We also set the
+L<checkRetStat> attribute, as else L<sql_sp> would abort if the return value
+was non-zero.
 
 =head2 sql_insert
 
-   [$X->]sql_insert($table, $valref);
+   $X->sql_insert($table, $valref);
 
 L</sql_insert> generates an INSERT statement from a hash and executes it.
 No data is returned.
-
-If you don't provide a handle, L</sql_insert> uses the handle created by the
-first call to L</sql_init>.
 
 B<$table> is the name of the table, and B<$valref> is a reference to a hash
 where the name of the keys are taken as column names. L</sql_insert>
@@ -660,10 +674,10 @@ and there is a lot to gain by using stored procedures.
 
 =head2 sql_string
 
-    $string = [$X->]sql_string($string);
+    $string = sql_string($string);
 
-L</sql_string> returns $string surrounded by single quotes, and any single quote
-in $string is doubled. If $string is C<undef>, the string NULL (unquoted) is
+L</sql_string> returns C<$string> surrounded by single quotes, and any single quote
+in C<$string> is doubled. If C<$string> is C<undef>, the string NULL (unquoted) is
 returned. Example:
 
     print sql_string("This is Jim's house");
@@ -674,25 +688,23 @@ prints
     'This is Jim''s house'
     NULL
 
-If you provide a handle, it is not really used anyway.
-
 =head2 Transaction routines
 
-    [$X->]sql_begin_trans;
-    [$X->]sql_commit;
-    [$X->]sql_rollback;
+    $X->sql_begin_trans;
+    $X->sql_commit;
+    $X->sql_rollback;
 
 These are just a short way of saying
 
-    sql("BEGIN TRANSACTION");
-    sql("COMMIT TRANSACTION");
-    sql("ROLLBACK TRANSACTION");
+    $X->sql("BEGIN TRANSACTION");
+    $X->sql("COMMIT TRANSACTION");
+    $X->sql("ROLLBACK TRANSACTION");
 
 respectively.
 
 =head2 sql_set_conversion
 
-    [$X->]sql_set_conversion([$client_cs [, $server_cs [, $direction]]]);
+    $X->sql_set_conversion([$client_cs [, $server_cs [, $direction]]]);
 
 B<sql_set_conversion> establishes a character conversion between client
 and server and/or vice versa for the given handle. If you don't provide
@@ -724,14 +736,14 @@ characters sets do not need to agree with the official character sets of the
 client or the server.
 
 Specify the character sets as code pages, with or without the leading "CP".
-For $client_cs you can also specify "OEM" or "ANSI" to use the OEM or ANSI
+For C<$client_cs> you can also specify "OEM" or "ANSI" to use the OEM or ANSI
 character set of the client. These are read from the key
 SYSTEM\CurrentControlSet\Control\Nls\CodePage in the HKEY_LOCAL_MACHINE hive.
 For the server character set, you can specify "iso_1" as an alternative to
 "CP1252" to get Latin-1.
 
-The default for $client_cs is the local OEM character set. The default for
-$server_cs is the character set of the server (SQL7 and earlier) or the
+The default for C<$client_cs> is the local OEM character set. The default for
+C<$server_cs> is the character set of the server (SQL7 and earlier) or the
 default collation for the server (SQL2000 and later). (Use I<sp_helpsort>
 to find out if you don't know.)
 
@@ -776,16 +788,16 @@ want it to be in Latin-1. This could be simple way of doing it:
 
     use MSSQL::Sqllib(:DEFAULT :directions)
 
-    sql_init(undef, "sa", "", "db");
-    sql_set_conversion("CP850", "iso_1", TO_SERVER_ONLY);
-    @table = sql(<<SQLEND);
+    my $X = sql_init(undef, "sa", "", "db");
+    $X->sql_set_conversion("CP850", "iso_1", TO_SERVER_ONLY);
+    @table = $X->sql(<<SQLEND);
        SELECT * INTO #tbl FROM tbl WHERE 1 = 0  -- Clone the table.
        SELECT * FROM tbl
     SQLEND
     foreach $row (@table) {
-       sql_insert("#tbl", $row);
+       $X->sql_insert("#tbl", $row);
     }
-    sql(<<SQLEND);
+    $X->sql(<<SQLEND);
        BEGIN TRANSCTION
        DELETE tbl
        INSERT tbl SELECT * FROM #tbl
@@ -795,7 +807,7 @@ want it to be in Latin-1. This could be simple way of doing it:
 Here we are converting the data as we send it back. Alternatively we could
 have said:
 
-    sql_set_conversion("ANSI", "CP850", TO_CLIENT_ONLY);
+    $X->sql_set_conversion("ANSI", "CP850", TO_CLIENT_ONLY);
 
 =item *
 
@@ -815,7 +827,7 @@ sets in the database), compose your own CPX-file and put it in System32.
 
 =head2 sql_unset_conversion
 
-    [$X->]sql_unset_conversion([$direction]);
+    $X->sql_unset_conversion([$direction]);
 
 Removes any previous conversion in the given direction. If you leave out
 C<$direction>, conversion is removed in both directions. See
@@ -1045,8 +1057,8 @@ Constants for DB-Library severities are defined in MSSQL::DBlib::Const::Severity
 =item neverStopOn
 
 This is a hash with error numbers as keys. L</sql_message_handler> will never
-set C<dieFlag> for an error if C<neverStopOn>{$msgno} is set. For DB-Library
-errors, the error numbers are negated. Thus if C<neverStopOn>{-$dberr} is set,
+set C<dieFlag> for an error if C<neverStopOn>C<{$msgno}> is set. For DB-Library
+errors, the error numbers are negated. Thus if C<neverStopOn>C<{-$dberr}> is set,
 L</sql_error_handler> will not set C<dieFlag>. C<neverStopOn> overrides
 C<maxSeverity> and C<maxLibSeverity>.
 
@@ -1068,8 +1080,8 @@ exempted from handling in L</sql_error_handler> for your convenience.
 =item alwaysStopOn
 
 This is a hash with error numbers as keys. L</sql_message_handler> will always
-set C<dieFlag> for an error if C<alwaysStopOn>{$msgno} is set. For DB-Library
-errors, the error numbers are negated. Thus if C<alwaysStopOn>{-$dberr} is set,
+set C<dieFlag> for an error if C<alwaysStopOn>C<{$msgno}> is set. For DB-Library
+errors, the error numbers are negated. Thus if C<alwaysStopOn>C<{-$dberr}> is set,
 L</sql_error_handler> will set C<dieFlag>. C<alwaysStopOn> overrides C<maxSeverity>
 and C<maxLibSeverity>.
 
@@ -1110,11 +1122,11 @@ See also C<neverPrint> and C<alwaysPrint>.
 
 =item neverPrint
 
-This is a hash with error numbers as keys. If C<neverPrint>{$msgno} has a
+This is a hash with error numbers as keys. If C<neverPrint>C<{$msgno}> has a
 true value, L</sql_message_handler> will print no part of the message
 regardless of C<printMsg>, C<printText> and C<printLines>.
 
-Likewise L</sql_error_handler> will not print a messages if C<neverPrint>{-$dberr}
+Likewise L</sql_error_handler> will not print a messages if C<neverPrint>C<{-$dberr}>
 is set. That is, DB-Library error codes should appear with a negative value.
 
 By default the following entires are set: 5701, 5703 and -10007. 5701 is
@@ -1124,7 +1136,7 @@ See C<neverStopOn> for a discussion on DB-Library message 10007.
 
 =item alwaysPrint
 
-This is a hash with error numbers as keys. If C<alwaysPrint>{$errno} has
+This is a hash with error numbers as keys. If C<alwaysPrint>C<{$errno}> has
 a true value, L</sql_message_handler> will print all parts of the message
 regardless of C<printMsg>, C<printText> and C<printLines>. By the default
 the messages 3606, 3607 are flagged. 3606 is I<Arithmetic overflow
@@ -1181,19 +1193,16 @@ ever deletes anything from C<messages>.
 
 =back
 
-=head1 SQL 7 and beyond
+=head1 Restrictions with new datatypes
 
-With MS SQL 7, Microsoft abadoned further development of DB-Library, on
+With MS SQL Server 7, Microsoft abadoned further development of DB-Library, on
 which MSSQL::Sqllib is based, including adaptions to new features in SQL Server.
 
-The following restrictions apply for features that were added to SQL Server
-in SQL7 and later versions when using MSSQL::Sqllib and MSSQL::DBlib.
-As a general rule: you can always use new or enhanced datatypes, as long
-as you can pass them as part of a command string. But if you pass them
-as a parameter with L</sql_sp> or retrieve them in a result set in
-L</sql>, L</sql_one> or L</sql_sp> you are likely to encounter restrictions.
-
-B<Disclaimer:> This is what I am aware of. There might be more.
+The area where is most likely to give cause for concern is new and enhanced
+datatype. You can always pass a new or enhanced datatype as part of a command
+string (save the fact that MSSQL::Sqllib cannot handle Unicode data), but
+you run into to problems if you want to use them as a parameter to a stored
+procedure, or get them back in a result set. This is a list over known issues.
 
 =over 4
 
@@ -1254,15 +1263,14 @@ This datatype was introduced in SQL 2000. All sql_variant data will be passed as
 char values to DB-Library clients, and all data you enter through L</sql_sp>
 will have a base type of varchar.
 
-
 =back
 
 =head1 ACKNOWLEDGEMENTS
 
-Michael Peppler included the &sql routine in his Sybperl, a contribution he
+Michael Peppler included the C<&sql> routine in his Sybperl, a contribution he
 credits to Gisele Aas. This was the feather from which the Sqllib bird was
 born.
 
 =head1 AUTHOR
 
-Erland Sommarskog  E<lt>F<sommar@algonet.se>E<gt>.
+Erland Sommarskog  E<lt>F<sommarC<@algonet>.se>E<gt>.

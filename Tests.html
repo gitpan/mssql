@@ -3,25 +3,26 @@
 <TITLE>Test scripts for MSSQL modules</TITLE>
 </HEAD>
 <BODY>
-<H1><CENTER>Test scripts for MSSQL modules</CENTER></H1>
-
+<CENTER><H1>Test scripts for MSSQL modules</H1></CENTER>
+<P>
 This text gives some information on the test suits for MSSQL::DBlib and
 MSSQL::Sqllib. The exact behaviour of the scripts may depend on your SQL
 Server version, your regional settings and a few more things. Thus you may
 see failures, where I don't. This text attempts to indicate what could happen.
 
 <H3>Running the test scripts</H3>
-If you have Perl 5.004 or later, including ActiveState Perl versions, the
-simplest way to run the test scripts is with <KBD>MAKE test</KBD>. If you
-only have ActiveState 3xx, you only have the option of running the files
-directly from the command line. With AS 3xx you must be in the
-directory where the test scripts reside, Dblib/t and Sqllib/t respectively.
+If you have installed the modules from sources, the simplest way to run
+the test scripts is with <KBD>MAKE test</KBD>. If you have made a binary
+install run the scripts from the command line. With the top directory
+for the Perl installation as the current directory run them as:
 <P>
-Before you can run the scripts, you probably need to edit the files
+<PRE>   perl dblib/t/1_dblib.t</PRE>
+<P>
+Before you can run the scripts, you may need to edit the files
 DBlib/t/sqllogin.pl and Sqllib/t/sqllogin.pl to specify username, password
-and server. As shipped, they will attempt to log in as <I>sa</I> with no
-password on the local server. Don't forget to delete sensitive information
-from the files, when you have completed testing!
+and server. As shipped, they will attempt to log in with Windows
+Authentication on the local server. Don't forget to delete sensitive
+information from the files, when you have completed testing!
 <P>
 All test scripts run in tempdb, and do only create temporary tables and
 procedures.
@@ -47,8 +48,7 @@ part is reached.
 All these tests do of course require that MSSQL::DBlib is present, as
 MSSQL::Sqllib is an heir of MSSQL::DBlib.
 <P>
-<B>1_resultsets.t</B> tests the various row and result styles. There are no known
-issues with this script, except that test 99 fails if you run without warnings.
+<B>1_resultsets.t</B> tests the various row and result styles.
 If you are bewildered by resulting structure of the various combinations of row
 and result styles, you might get an idea by studying this script.
 <P>
@@ -60,18 +60,19 @@ and may fail when testing date values if your regional settings are such that
 may fail with rounding errors.
 <P>
 <B>3_conversion_t</B> will be skipped if your OEM charset is not CP850 or CP437.
-It assumes that the default character set of your server is Latin-1. It is
+It assumes that the default character set of your server is Latin-1. If it is
 not, it is likely that several tests will fail.
 <P>
-<B>4_errors.t</B> tests the error handling. There are no known issues with this
-script, save that it leaves a couple of files around in the sqllib/t directory.
+<B>4_errors.t</B> tests the error handling. Test 17 fails with Perl 5.004,
+due to some advanced meddling wih STDERR. This script leaves a couple of
+files around in the sqllib/t directory.
 <P>
 <B>5_uniqueid.t</B> tests use of the SQL Server 7 datatype uniqueidentifier. This
-test is skipped if your server is running 6.5 or lower.
+test is skipped if your server is running 6.5.
 <P>
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 01-05-05 19:11 <!-- $-->
+Last updated <!--$$Modtime:--> 03-01-01 20:14 <!-- $-->
 </I>
 
 </HTML>
