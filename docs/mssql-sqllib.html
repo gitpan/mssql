@@ -39,7 +39,7 @@
 		<LI><A HREF="#errInfo">errInfo</A>
 	</UL>
 
-	<LI><A HREF="#SQL_Server_7_issues">SQL Server 7 issues</A>
+	<LI><A HREF="#SQL_7_and_beyond">SQL 7 and beyond</A>
 	<LI><A HREF="#ACKNOWLEDGEMENTS">ACKNOWLEDGEMENTS</A>
 	<LI><A HREF="#AUTHOR">AUTHOR</A>
 </UL>
@@ -82,7 +82,7 @@ MSSQL::Sqllib - SQL Library for Microsoft SQL Server from Perl
 <H1><A NAME="OVERVIEW">OVERVIEW
 
 </A></H1>
-MSSQL::Sqllib is a Perl module that inherits from <A HREF="././mssql-dblib.html#MSSQL_DBlib">MSSQL/DBlib</A> 
+MSSQL::Sqllib is a Perl module that inherits from <A HREF="././mssql-dblib.html#MSSQL_DBlib">MSSQL/DBlib</A>
 and extends it with a high-level interface, providing the possibility to
 send an SQL command and retrieve the result in one line of code and forget
 about error-checking. By default MSSQL::Sqllib will abort in case of a
@@ -163,9 +163,9 @@ another client library and also another RDBMS engine.
 
 That being said, we come to the part where I have to say that due to
 Microsoft's move not to develop DB-Library any further, MSSQL::Sqllib is
-fairly restricted in what it supports of the novelties in SQL Server 7. See
-the section 
-<A HREF="#SQL_Server_7_issues">SQL Server 7 issues</A> at the end of this document.
+fairly restricted in what it supports of the features added in SQL 7 and
+later. See the section
+<A HREF="#SQL_7_and_beyond">SQL 7 and beyond</A> at the end of this document.
 
 
 <P>
@@ -392,7 +392,7 @@ style of ``19980106 13:29:19.230''.
 <P>
 
 <LI><STRONG></STRONG>
-Turns of any ANSI/OEM conversion that may be in effect. See <A HREF="#sql_set_conversion">sql_set_conversion</A> 
+Turns of any ANSI/OEM conversion that may be in effect. See <A HREF="#sql_set_conversion">sql_set_conversion</A>
 if you wish to use character-set conversion.
 
 
@@ -403,6 +403,14 @@ If any error occurs while setting up the connection, <A HREF="#sql_init">sql_ini
 SQL Server, such as the user's default database in SQL Server not being
 accessible. (If you need to continue after a failed login, remember that
 you can always run your <A HREF="#sql_init">sql_init</A> from an <CODE>eval</CODE>.)
+
+
+<P>
+
+<STRONG>$server</STRONG> may refer to a named instance, for instance MYMACHINE\SECOND,
+<STRONG>but:</STRONG> Named instances were introduced in SQL2000, and the official word from
+Microsoft is that named instances are not supported with DB-Library.
+However, I have yet to fail to connect to a named instance.
 
 
 <P>
@@ -517,7 +525,7 @@ they appeared in the query with the first column at index 0.
 </A></STRONG><DD>
 Each row is returned as a scalar value. SCALAR is mainly intended for
 one-columns queries, but if the query has more than one column, they are
-separated by the module attribute <CODE>$MSSQL::Sqllib::SQLSEP</CODE>. Initially <CODE>$SQLSEP</CODE> has the value 
+separated by the module attribute <CODE>$MSSQL::Sqllib::SQLSEP</CODE>. Initially <CODE>$SQLSEP</CODE> has the value
 <CODE>"\022"</CODE>, a control character. You can set it to a string of any length that fit
 your needs. Note, however, that the value of <CODE>$SQLSEP</CODE> <EM>must not</EM> appear in the actual data.
 
@@ -593,9 +601,9 @@ with the non-key columns of the result set.
 
 <P>
 
-Which column(s) that supply the key values, is determined by the parameter 
+Which column(s) that supply the key values, is determined by the parameter
 <STRONG>@keys</STRONG>, which is mandatory for <A HREF="#item_KEYED">KEYED</A>. For row style <A HREF="#item_HASH">HASH</A>, <CODE>@keys</CODE> should hold the name of the key column(s) of the result set. For row style <A HREF="#item_LIST">LIST</A>
-and <A HREF="#item_SCALAR">SCALAR</A>, <CODE>@keys</CODE> should hold the column number of the key(s). Column numbers start on 1. 
+and <A HREF="#item_SCALAR">SCALAR</A>, <CODE>@keys</CODE> should hold the column number of the key(s). Column numbers start on 1.
 
 
 <P>
@@ -614,13 +622,13 @@ A simple example, retrieve all types and their ids:
 <P>
 
 A more complicated case. The table Tbl has the columns key1, key2, key3,
-val1, val2, ... Among other data, we want to retrive the value val4 for the
-key ABC/17/X.
+val1, val2, ... Among other data, we want to retrive the column val4 for
+the key ABC/17/X.
 
 
 <P>
 
-<PRE>    $result = sql(&quot;SELECT * FROM Tbl&quot;, HASH, KEYED, 
+<PRE>    $result = sql(&quot;SELECT * FROM Tbl&quot;, HASH, KEYED,
                   ['key1', 'key2', 'key3']);
     $val4 = $$result{'ABC'}{'17'}{'X'}{'val4'};
 </PRE>
@@ -678,7 +686,7 @@ Instead of a result style, you can provide a callback. <A HREF="#sql">sql</A> ca
 <P>
 
 <STRONG>$resultset_no</STRONG> tells you which result set the row comes from. The result sets are numbered
-from 1 and up. 
+from 1 and up.
 
 
 <P>
@@ -811,25 +819,25 @@ if no rows were found, or if there were more than one row or result set.
 <H2><A NAME="sql_sp">sql_sp
 
 </A></H2>
-<PRE>   $resultref = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params] 
+<PRE>   $resultref = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
                                  [, $rowstyle [, $resultstyle]]);
-   @result    = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params] 
+   @result    = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
                                  [, $rowstyle [, $resultstyle]]);
-   %result    = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params], 
+   %result    = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params],
                                  HASH, SINGLESET);
 </PRE>
 
 <P>
 
-<PRE>   $hashref   = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params], 
+<PRE>   $hashref   = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params],
                                  $rowstyle, KEYED, \@keys);
-   %hash      = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params], 
+   %hash      = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params],
                                  $rowstyle, KEYED, \@keys);
 </PRE>
 
 <P>
 
-<PRE>   $retstat   = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params], 
+<PRE>   $retstat   = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params],
                                  $rowstyle, \&amp;callback);
 </PRE>
 
@@ -856,8 +864,8 @@ If you don't provide a handle, <A HREF="#sql_sp">sql_sp</A> uses the handle crea
 
 <P>
 
-The various return values of <A HREF="#sql_sp">sql_sp</A>, as well as the parameters <STRONG>$rowstyle</STRONG>, 
-<STRONG>$resultstyle</STRONG>, <STRONG>&callback</STRONG>, and <STRONG>@keys</STRONG> work exactly in the same way as with 
+The various return values of <A HREF="#sql_sp">sql_sp</A>, as well as the parameters <STRONG>$rowstyle</STRONG>,
+<STRONG>$resultstyle</STRONG>, <STRONG>&callback</STRONG>, and <STRONG>@keys</STRONG> work exactly in the same way as with
 <A HREF="#sql">sql</A>, please see this routine for details.
 
 
@@ -891,7 +899,7 @@ parameter. (Don't forget the <STRONG>@</STRONG>.) For the elements the same issu
 
 <P>
 
-Notes: 
+Notes:
 
 
 <P>
@@ -904,7 +912,7 @@ If you provide <CODE>\@param</CODE> as well as <CODE>\%param</CODE>, and the sam
 <P>
 
 <LI><STRONG></STRONG>
-It is undefined wbether output parameters of the datatypes <EM>binary</EM> and <EM>char</EM> 
+It is undefined whether output parameters of the datatypes <EM>binary</EM> and <EM>char</EM>
 will include trailing zeroes or blanks respectively. This actually depends
 on which version of SQL Server you are using.
 
@@ -991,7 +999,7 @@ later on.
 <P>
 
 <A HREF="#sql_insert">sql_insert</A> generates an INSERT statement from a hash and executes it. No data is
-returned. 
+returned.
 
 
 <P>
@@ -1002,7 +1010,7 @@ If you don't provide a handle, <A HREF="#sql_insert">sql_insert</A> uses the han
 <P>
 
 <STRONG>$table</STRONG> is the name of the table, and <STRONG>$valref</STRONG> is a reference to a hash where the name of the keys are taken as column
-names. <A HREF="#sql_insert">sql_insert</A> 
+names. <A HREF="#sql_insert">sql_insert</A>
 interrogates the server to find out the datatypes of the table columns.
 This profile is cached internally, in case the same table is inserted to
 again. See also the handle attributes <A HREF="#item_tables">tables</A>.
@@ -1012,7 +1020,7 @@ again. See also the handle attributes <A HREF="#item_tables">tables</A>.
 
 For string types, <A HREF="#sql_insert">sql_insert</A> will put quotes around the values (using
 <A HREF="#sql_string">sql_string</A>) when composing the INSERT statement. For binary datatypes,
-<A HREF="#sql_insert">sql_insert</A> will add add a leading <CODE>0x</CODE>, unless a <CODE>0x</CODE> is already there. 
+<A HREF="#sql_insert">sql_insert</A> will add add a leading <CODE>0x</CODE>, unless a <CODE>0x</CODE> is already there.
 
 
 <P>
@@ -1175,8 +1183,10 @@ HKEY_LOCAL_MACHINE hive. For the server character set, you can specify
 <P>
 
 The default for <CODE>$client_cs</CODE> is the local OEM character set. The
-default for <CODE>$server_cs</CODE> is the character set of the server.
-(Use <EM>sp_helpsort</EM> to find out if you don't know.)
+default for <CODE>$server_cs</CODE> is the character set of the server
+(SQL7 and earlier) or the default collation for the server (SQL2000 and
+later). (Use <EM>sp_helpsort</EM>
+to find out if you don't know.)
 
 
 <P>
@@ -1197,6 +1207,19 @@ files are found, execution is aborted.
 <P>
 
 <UL>
+<LI><STRONG></STRONG>
+The conversion facility was added because SQL6.5 had insuffcient support in
+this area. The GUI tools would unconditionally convert between ANSI and OEM
+when reading and saving from disk. In other situations you could not get
+the conversion you wanted. Tools in SQL7 improved in this area, not the
+least BCP which offers the full range of choices just like MSSQL::Sqllib.
+But OSQL in SQL7 could convert at all. OSQL in SQL2000 can, because you can
+now specify a data source. But you still can convert to OEM if your data is
+ASCII and your server is OEM, because OSQL is an OEM tool.
+
+
+<P>
+
 <LI><STRONG></STRONG>
 These character-set conversions typically are not fully round-trip. That
 is, if you convert one character from set to another and back, you may not
@@ -1271,56 +1294,6 @@ System32.
 <P>
 
 </UL>
-<STRONG>Rantings:</STRONG>
-
-
-
-
-<P>
-
-While these two points are more of the author ranting's over Microsoft's
-insufficient support in this area, you might still find useful technical
-information here.
-
-
-<P>
-
-<UL>
-<LI><STRONG></STRONG>
-Say that you compose files with stored procedures or some other data in a
-Windows editor such as Notepad, PFE, Textpad or anything <EM>but</EM> ISQL/W or Enterprise Manager. The data is Latin-1, but the Perl script is
-running in console more and its client set is the OEM set which might be
-CP850. Now, if your server is Latin-1, you don't have to bother about
-conversion, but if you server is talking CP850 you probably want a
-conversion. (One never knows, I've seen Latin-1 data stored in CP850
-servers.) Using DB-Library without MSSQL::Sqllib you wouldn't stand a
-chance to get a conversion in this case. ``Hey, both are OEM, why
-convert?'', DB-Library thinks. It will however convert the data if the
-ANSI/OEM flag in on (this is controlled in <EM>SQL Client Configuration
-Utility</EM>) when sending to a Latin-1 server - converting Latin-1 as if it was CP850.
-Bright guy.
-
-
-<P>
-
-<LI><STRONG></STRONG>
-If you composed your script or data files in <EM>ISQL/W</EM> or <EM>Enterprise
-Manager</EM> and then saved it to disk, you do now in fact have an OEM file, because
-these two tools <EM>unconditionally</EM> perform an ANSI/OEM conversion when reading and writing a file. So if you
-used any these tools to compose the files, you must activate conversion if
-you want to use MSSQL::Sqllib to load these files in a Latin-1 server, as
-MSSQL::Sqllib always turns off all DB-Library conversion.
-
-
-<P>
-
-The good news is that the Query Analyzer that comes with SQL Server 7,
-permits you choose how files are to be read and stored from disk.
-
-
-<P>
-
-</UL>
 <P>
 <HR>
 <H2><A NAME="sql_unset_conversion">sql_unset_conversion
@@ -1358,7 +1331,7 @@ message back to the client, its doings will still be of interest to you.
 
 The behaviour of <A HREF="#sql_message_handler">sql_message_handler</A> is determined by the handle attribute
 <A HREF="#errInfo">errInfo</A>, a hash which is described in detail separately in its own section. Here I
-describe how <A HREF="#sql_message_handler">sql_message_handler</A> behaves with the default values of 
+describe how <A HREF="#sql_message_handler">sql_message_handler</A> behaves with the default values of
 <A HREF="#errInfo">errInfo</A> in force.
 
 
@@ -1398,7 +1371,7 @@ to STDERR. Here is a sample:
 <P>
 
 Thus, you get both the error text as well as the code that caused the
-error. 
+error.
 
 
 <P>
@@ -1409,7 +1382,7 @@ in the example above.)
 
 <P>
 
-Two messages are suppressed completely: the messages <EM>Changed database context...</EM> 
+Two messages are suppressed completely: the messages <EM>Changed database context...</EM>
 and <EM>Changed language setting...</EM> On the other hand, the messages about arithmetic overflow and division by
 zero are printed in full, even if they have severity 0.
 
@@ -1458,7 +1431,7 @@ You can override this behaviour with the <A HREF="#errInfo">errInfo</A> elements
 
 </A></H1>
 The attributes of MSSQL::DBlib is available with MSSQL::Sqllib as well. See
-the section <A HREF="././mssql-dblib.html#Handle_Attributes">Handle Attributes</A> in the MSSQL::DBlib doc for inforamtion on these attributes. 
+the section <A HREF="././mssql-dblib.html#Handle_Attributes">Handle Attributes</A> in the MSSQL::DBlib doc for inforamtion on these attributes.
 
 
 <P>
@@ -1474,6 +1447,17 @@ Here are the attributes specific to MSSQL::Sqllib.
 
 </A></H2>
 <DL>
+<DT><STRONG><A NAME="item_SQL_version">SQL_version
+
+</A></STRONG><DD>
+This is a read-only attribute (well, nothing prevents you from changing it,
+but if you do, please don't send me the error reports) that holds the
+current SQL Server version. The is the version string that you see in
+@@version, and also in <EM>xp_msver</EM>, for instance 8.00.194. (The release version of SQL 2000.)
+
+
+<P>
+
 <DT><STRONG><A NAME="item_logHandle">logHandle
 
 </A></STRONG><DD>
@@ -1502,8 +1486,7 @@ not marked as such.
 
 </A></STRONG><DD>
 Tells MSSQL::Sqllib to not execute the code it gets. This is useful in
-combination with <A HREF="#item_logHandle">logHandle</A> if all you want to do is to generate a script that is to be run by <STRONG>isql</STRONG> later. (If you are considering to use ISQL/W, you probably want to convert
-to OEM, see the rantings at the end of the section for <A HREF="#sql_set_conversion">sql_set_conversion</A>.)
+combination with <A HREF="#item_logHandle">logHandle</A> if all you want to do is to generate a script that is to be run by <STRONG>isql</STRONG> later.
 
 
 <P>
@@ -1542,7 +1525,7 @@ since the last time you called <A HREF="#sql_insert">sql_insert</A>, you can del
 <H2><A NAME="errInfo">errInfo
 
 </A></H2>
-This attribute is a hash whose components are used by <A HREF="#sql_message_handler">sql_message_handler</A>, 
+This attribute is a hash whose components are used by <A HREF="#sql_message_handler">sql_message_handler</A>,
 <A HREF="#sql_error_handler">sql_error_handler</A> and <A HREF="#sql_sp">sql_sp</A> to determine whether to abort execution, what and when to print and whether
 to return error messages to the caller. Some of the components are arrays
 and hashes themselves. A pseudo-code declaration with default values of <A HREF="#errInfo">errInfo</A> looks like this:
@@ -1550,7 +1533,7 @@ and hashes themselves. A pseudo-code declaration with default values of <A HREF=
 
 <P>
 
-<PRE>      RECORD errInfo 
+<PRE>      RECORD errInfo
           -- Where to write error messages
           errFileHandle  IO::File = STDERR;
 </PRE>
@@ -1572,7 +1555,7 @@ and hashes themselves. A pseudo-code declaration with default values of <A HREF=
           printText    integer = 0;
           printLines   integer = 11;
           neverPrint   HASH OF flags = {'5701' =&gt; 1, '5703' =&gt; 1, '-10007' =&gt; 1}
-          alwaysPrint  HASH OF flags = {'3606' =&gt; 1, '3607' =&gt; 1}
+          alwaysPrint  HASH OF flags = {'3606' =&gt; 1, '3607' =&gt; 1, '3622' =&gt; 1}
 </PRE>
 
 <P>
@@ -1585,7 +1568,7 @@ and hashes themselves. A pseudo-code declaration with default values of <A HREF=
 <P>
 
 <PRE>          -- Return error messages to caller
-          saveMessages flag = 0;  
+          saveMessages flag = 0;
           messages     ARRAY OF RECORD
                           state     integer;
                           errno     integer;
@@ -1625,9 +1608,9 @@ Notice that you cannot use <A HREF="#errInfo">errInfo</A> to control the behavio
 <DT><STRONG><A NAME="item_errFileHandle">errFileHandle
 
 </A></STRONG><DD>
-Where <A HREF="#sql_message_handler">sql_message_handler</A> and <A HREF="#sql_error_handler">sql_error_handler</A> are to write their messages. Initially <CODE>undef</CODE>, which will cause the handlers to write to STDERR. Set <A HREF="#item_errFileHandle">errFileHandle</A> to a filehandle open for write to override this. 
+Where <A HREF="#sql_message_handler">sql_message_handler</A> and <A HREF="#sql_error_handler">sql_error_handler</A> are to write their messages. Initially <CODE>undef</CODE>, which will cause the handlers to write to STDERR. Set <A HREF="#item_errFileHandle">errFileHandle</A> to a filehandle open for write to override this.
 <A HREF="#item_errFileHandle">errFileHandle</A> is useful, when you want to save SQL errors to a file, but still want to
-see unexpected Perl warnings directly in the command window. 
+see unexpected Perl warnings directly in the command window.
 
 
 <P>
@@ -1635,7 +1618,7 @@ see unexpected Perl warnings directly in the command window.
 <DT><STRONG><A NAME="item_dieFlag">dieFlag
 
 </A></STRONG><DD>
-This is a read-only flag set by <A HREF="#sql_message_handler">sql_message_handler</A> or 
+This is a read-only flag set by <A HREF="#sql_message_handler">sql_message_handler</A> or
 <A HREF="#sql_error_handler">sql_error_handler</A>, suggesting the caller that execution is to be aborted. If the caller is a
 routine in MSSQL::Sqllib, the advice is followed.
 
@@ -1653,7 +1636,7 @@ handlers in MSSQL::Sqllib, you can use <A HREF="#item_dieFlag">dieFlag</A> to de
 <DT><STRONG><A NAME="item_maxSeverity">maxSeverity
 
 </A></STRONG><DD>
-The highest permitted severity level of messages from SQL Server. 
+The highest permitted severity level of messages from SQL Server.
 <A HREF="#sql_message_handler">sql_message_handler</A> will set the <A HREF="#item_dieFlag">dieFlag</A> when receiving messsages with severity above <A HREF="#item_maxSeverity">maxSeverity</A>. See also <A HREF="#item_neverStopOn">neverStopOn</A> and <A HREF="#item_alwaysStopOn">alwaysStopOn</A>. Default: <STRONG>10</STRONG>.
 
 
@@ -1668,7 +1651,7 @@ Note: it appears that SQL Server sends no messages with severities between
 <DT><STRONG><A NAME="item_maxLibSeverity">maxLibSeverity
 
 </A></STRONG><DD>
-The highest permitted severity level of messages from DB-Library. 
+The highest permitted severity level of messages from DB-Library.
 <A HREF="#sql_error_handler">sql_error_handler</A> will set the <A HREF="#item_dieFlag">dieFlag</A> when receiving messsages with severity above <A HREF="#item_maxLibSeverity">maxLibSeverity</A>. See also <A HREF="#item_neverStopOn">neverStopOn</A> and <A HREF="#item_alwaysStopOn">alwaysStopOn</A>
 below. Default: <STRONG>1</STRONG> (= EXINFO).
 
@@ -1685,7 +1668,7 @@ MSSQL::DBlib::Const::Severity.
 
 </A></STRONG><DD>
 This is a hash with error numbers as keys. <A HREF="#sql_message_handler">sql_message_handler</A> will never set <A HREF="#item_dieFlag">dieFlag</A> for an error if <A HREF="#item_neverStopOn">neverStopOn</A>{$msgno} is set. For DB-Library errors, the error numbers are negated. Thus
-if <A HREF="#item_neverStopOn">neverStopOn</A>{-$dberr} is set, 
+if <A HREF="#item_neverStopOn">neverStopOn</A>{-$dberr} is set,
 <A HREF="#sql_error_handler">sql_error_handler</A> will not set <A HREF="#item_dieFlag">dieFlag</A>. <A HREF="#item_neverStopOn">neverStopOn</A> overrides
 <A HREF="#item_maxSeverity">maxSeverity</A> and <A HREF="#item_maxLibSeverity">maxLibSeverity</A>.
 
@@ -1704,7 +1687,7 @@ If follows from the above that you must say:
 <P>
 
 to prevent the error <EM>Data conversion resulted in overflow</EM> causing <A HREF="#item_dieFlag">dieFlag</A>
-to be set. (You must inclued the parentheses, or else Perl will interpret 
+to be set. (You must include the parentheses, or else Perl will interpret
 <CODE>-SQLECOFL</CODE> as a bareword.)
 
 
@@ -1720,8 +1703,8 @@ severity 11 or higher. As <A HREF="#sql_message_handler">sql_message_handler</A>
 
 </A></STRONG><DD>
 This is a hash with error numbers as keys. <A HREF="#sql_message_handler">sql_message_handler</A> will always set <A HREF="#item_dieFlag">dieFlag</A> for an error if <A HREF="#item_alwaysStopOn">alwaysStopOn</A>{$msgno} is set. For DB-Library errors, the error numbers are negated. Thus
-if <A HREF="#item_alwaysStopOn">alwaysStopOn</A>{-$dberr} is set, 
-<A HREF="#sql_error_handler">sql_error_handler</A> will set <A HREF="#item_dieFlag">dieFlag</A>. <A HREF="#item_alwaysStopOn">alwaysStopOn</A> overrides <A HREF="#item_maxSeverity">maxSeverity</A> 
+if <A HREF="#item_alwaysStopOn">alwaysStopOn</A>{-$dberr} is set,
+<A HREF="#sql_error_handler">sql_error_handler</A> will set <A HREF="#item_dieFlag">dieFlag</A>. <A HREF="#item_alwaysStopOn">alwaysStopOn</A> overrides <A HREF="#item_maxSeverity">maxSeverity</A>
 and <A HREF="#item_maxLibSeverity">maxLibSeverity</A>.
 
 
@@ -1793,7 +1776,7 @@ See also <A HREF="#item_neverPrint">neverPrint</A> and <A HREF="#item_alwaysPrin
 <DT><STRONG><A NAME="item_neverPrint">neverPrint
 
 </A></STRONG><DD>
-This is a hash with error numbers as keys. If <A HREF="#item_neverPrint">neverPrint</A>{$msgno} has a true value, <A HREF="#sql_message_handler">sql_message_handler</A> will print no part of the message regardless of <A HREF="#item_printMsg">printMsg</A>, <A HREF="#item_printText">printText</A> and <A HREF="#item_printLines">printLines</A>. 
+This is a hash with error numbers as keys. If <A HREF="#item_neverPrint">neverPrint</A>{$msgno} has a true value, <A HREF="#sql_message_handler">sql_message_handler</A> will print no part of the message regardless of <A HREF="#item_printMsg">printMsg</A>, <A HREF="#item_printText">printText</A> and <A HREF="#item_printLines">printLines</A>.
 
 
 <P>
@@ -1804,7 +1787,7 @@ negative value.
 
 <P>
 
-By default the following entires are set: 5701, 5703 and -10007. 5701 is 
+By default the following entires are set: 5701, 5703 and -10007. 5701 is
 <EM>Changed database context...</EM> and 5703 is <EM>Changed language setting...</EM>. These messages are generated on every login, and you rarely want to see
 them. See <A HREF="#item_neverStopOn">neverStopOn</A> for a discussion on DB-Library message 10007.
 
@@ -1814,8 +1797,9 @@ them. See <A HREF="#item_neverStopOn">neverStopOn</A> for a discussion on DB-Lib
 <DT><STRONG><A NAME="item_alwaysPrint">alwaysPrint
 
 </A></STRONG><DD>
-This is a hash with error numbers as keys. If <A HREF="#item_alwaysPrint">alwaysPrint</A>{$errno} has a true value, <A HREF="#sql_message_handler">sql_message_handler</A> will print all parts of the message regardless of <A HREF="#item_printMsg">printMsg</A>, <A HREF="#item_printText">printText</A> and <A HREF="#item_printLines">printLines</A>. By the default the messages 3606 and 3607 are flagged. 3606 is <EM>Arithmetic overflow
-occurred</EM> and 3607 is <EM>Division by zero occurred</EM>. These are raised with severity 0 if you have set none of ARITHABORT or
+This is a hash with error numbers as keys. If <A HREF="#item_alwaysPrint">alwaysPrint</A>{$errno} has a true value, <A HREF="#sql_message_handler">sql_message_handler</A> will print all parts of the message regardless of <A HREF="#item_printMsg">printMsg</A>, <A HREF="#item_printText">printText</A> and <A HREF="#item_printLines">printLines</A>. By the default the messages 3606, 3607 are flagged. 3606 is <EM>Arithmetic overflow
+occurred</EM>, 3607 is <EM>Division by zero occurred</EM> and 3622 is
+<EM>A domain error occurred</EM>. These are raised with severity 0 if you have set none of ARITHABORT or
 ARITHIGNORE ON. At least this SQL programmer feels that he wants to know on
 where the problem occurred, even if he didn't think of setting ARITHABORT.
 
@@ -1872,16 +1856,16 @@ following keys:
 
 <P>
 
-<PRE>    state     - the state of the messages. -1 means that the message 
+<PRE>    state     - the state of the messages. -1 means that the message
                 comes from DB-Library.
-    errno     - the number of the SQL message or the DB-Library message. 
+    errno     - the number of the SQL message or the DB-Library message.
                 (No negation of DB-Library error numbers are performed.)
     severity  - the severity of the message.
     text      - the text of the message.
     proc      - the procedure involved in the error.
-    line      - the number of the line in the procedure/batch in which 
+    line      - the number of the line in the procedure/batch in which
                 the error occurred.
-    oserr     - error code from the operating system, only applicable to 
+    oserr     - error code from the operating system, only applicable to
                 certain DB-Library errors.
     oserrtext - error text accompanying oserr, if any.
 </PRE>
@@ -1897,12 +1881,22 @@ The hashes are added at the end of the array by <A HREF="#sql_message_handler">s
 </DL>
 <P>
 <HR>
-<H1><A NAME="SQL_Server_7_issues">SQL Server 7 issues
+<H1><A NAME="SQL_7_and_beyond">SQL 7 and beyond
 
 </A></H1>
-The following restrictions apply for the novelties in SQL Server 7 when
-using
-<A HREF="#sql">sql</A>, <A HREF="#sql_one">sql_one</A> and <A HREF="#sql_sp">sql_sp</A>.
+With MS SQL 7, Microsoft abadoned further development of DB-Library, on
+which MSSQL::Sqllib is based, including adaptions to new features in SQL
+Server.
+
+
+<P>
+
+The following restrictions apply for features that were added to SQL Server
+in SQL7 and later versions when using MSSQL::Sqllib and MSSQL::DBlib. As a
+general rule: you can always use new or enhanced datatypes, as long as you
+can pass them as part of a command string. But if you pass them as a
+parameter with <A HREF="#sql_sp">sql_sp</A> or retrieve them in a result set in
+<A HREF="#sql">sql</A>, <A HREF="#sql_one">sql_one</A> or <A HREF="#sql_sp">sql_sp</A> you are likely to encounter restrictions.
 
 
 <P>
@@ -1913,11 +1907,21 @@ using
 <P>
 
 <DL>
+<DT><STRONG><A NAME="item_bigint">bigint
+
+</A></STRONG><DD>
+This datatype was added in SQL 2000. These values are passed as floats
+between SQL Server to DB-Library. In practice this means that you can use
+integers with 14-15 digits of accuracy.
+
+
+<P>
+
 <DT><STRONG><A NAME="item_bit">bit
 
 </A></STRONG><DD>
-SQL Server 7 supports nullable bit columns. If you retrieve a bit value
-with the value NULL, it will appear as 0 in MSSQL::DBlib, not as <CODE>undef</CODE>. The same applies if you attempt to pass <CODE>undef</CODE> for a bit parameter with <A HREF="#sql_sp">sql_sp</A>.
+SQL 7 introduced nullable bit columns. If you retrieve a bit value with the
+value NULL, it will appear as 0 in DB-Library, not as <CODE>undef</CODE>. The same applies if you attempt to pass <CODE>undef</CODE> for a bit parameter with <A HREF="#sql_sp">sql_sp</A>.
 
 
 <P>
@@ -1925,17 +1929,17 @@ with the value NULL, it will appear as 0 in MSSQL::DBlib, not as <CODE>undef</CO
 <DT><STRONG><A NAME="item_char">char and varchar
 
 </A></STRONG><DD>
-SQL Server 7 supports char and varchar values up to a length of 8000. With
-MSSQL::Sqllib such values will be truncated after 255 characters, both in
-result sets, and when passing parameters with <A HREF="#sql_sp">sql_sp</A>.
+SQL 7 increased the maximum length for char and varchar values from 255
+characters to 8000. With MSSQL::Sqllib values longer than 255 characters
+will be truncated, both in result sets, and when passing parameters with <A HREF="#sql_sp">sql_sp</A>.
 
 
 <P>
 
-SQL Server 7 supports varchar values of the empty string. These will appear
-as strings of one blank in MSSQL::Sqllib. If you attempt to pass the empty
-string as a parameter value, it will be converted to one blank before being
-passed to SQL Server.
+SQL 7 introduced the empty string as a possible varchar value. These will
+appear as strings of one blank in MSSQL::Sqllib. If you attempt to pass the
+empty string as a parameter value, it will be converted to one blank before
+being passed to SQL Server.
 
 
 <P>
@@ -1943,9 +1947,10 @@ passed to SQL Server.
 <DT><STRONG><A NAME="item_nchar">nchar and nvarchar
 
 </A></STRONG><DD>
-The same length restrictions as for char and varchar apply. Characters
-outside the range of 0-255 are converted to some fallback character by SQL
-Server.
+These datatypes were introduced in SQL 7 to support Unicode data. For
+DB-Library they appear just as char/varchar data, and long values will be
+truncated after 255 characters. Characters outside the range of 0-255 are
+converted to some fallback character by SQL Server.
 
 
 <P>
@@ -1953,7 +1958,7 @@ Server.
 <DT><STRONG><A NAME="item_ntext">ntext
 
 </A></STRONG><DD>
-This datatype is not supported at all. SQL Server 7 refuses to return ntext
+This datatype is not supported at all. SQL Server refuses to return ntext
 values to legacy clients such as DB-Library.
 
 
@@ -1981,6 +1986,16 @@ You can however successfully pass a regular GUID string (e.g.
 ``7223C906-2CF2-11D0-AFB8-00A024A82C78'' to a uniqueidentifier parameter,
 and you can also retrieve a properly formatted GUID string back from an
 OUTPUT parameter.
+
+
+<P>
+
+<DT><STRONG><A NAME="item_sql_variant">sql_variant
+
+</A></STRONG><DD>
+This datatype was introduced in SQL 2000. All sql_variant data will be
+passed as char values to DB-Library clients, and all data you enter through <A HREF="#sql_sp">sql_sp</A>
+will have a base type of varchar.
 
 
 <P>

@@ -219,9 +219,9 @@ each routine.
 
 <P>
 
-<STRONG>NOTE ON SQL Server 7:</STRONG> With SQL Server 7, Microsoft has settled on not keeping DB-Library up in
-pace with the development of the server. For instance, new datatypes are
-not fully supported. It is inevitable that these restrictions apply to
+<STRONG>NOTE ON SQL 7 and beyond:</STRONG> With SQL Server 7, Microsoft settled on not keeping DB-Library up in pace
+with the development of the server. For instance, new datatypes are not
+fully supported. It is inevitable that these restrictions apply to
 MSSQL::DBlib as well. These restrictions are discussed with the functions
 they apply to, as far as I am aware of them.
 
@@ -261,7 +261,12 @@ variable COMPUTERNAME.
 
 <P>
 
-If you don't provide a server name,DB-Library will apply its defaults. 
+If you don't provide a server name, DB-Library will apply its defaults.
+<CODE>$server</CODE> may refer to a named instance, for instance
+MYMACHINE\SECOND,
+<STRONG>but:</STRONG> Named instances were introduced in SQL2000, and the official word from
+Microsoft is that named instances are not supported with DB-Library.
+However, I have yet to fail to connect to a named instance.
 
 
 <P>
@@ -372,7 +377,7 @@ option.
 <P>
 
 Sends the content of the current command buffer to SQL Server for
-execution. 
+execution.
 <A HREF="#dbsqlexec">dbsqlexec</A> waits until it has received a response from the server, or a timeout
 elapses. If this is not feasable, use <A HREF="#dbsqlsend">dbsqlsend</A> followed by <A HREF="#dbsqlok">dbsqlok</A>
 instead, and check whether a response is available with <A HREF="#dbdataready">dbdataready</A>.
@@ -408,7 +413,7 @@ available, use <A HREF="#dbdataready">dbdataready</A>.
 
 <P>
 
-Retrieves the result of a batch previously sent with <A HREF="#dbsqlsend">dbsqlsend</A> or 
+Retrieves the result of a batch previously sent with <A HREF="#dbsqlsend">dbsqlsend</A> or
 <A HREF="#dbrpcsend">dbrpcsend</A>(0). If no server response is available, <A HREF="#dbsqlok">dbsqlok</A> waits until the server responds, or a timeout elapses.
 
 
@@ -431,7 +436,7 @@ returned.
 <P>
 
 The DB-Library documentation is somewhat inconsistent, but it appears that
-it can be meaningful calling <A HREF="#dbdataready">dbdataready</A> before calls <A HREF="#dbresults">dbresults</A> and 
+it can be meaningful calling <A HREF="#dbdataready">dbdataready</A> before calls <A HREF="#dbresults">dbresults</A> and
 <A HREF="#dbnextrow2">dbnextrow2</A> as well, as these function also waits until the server has responded.
 
 
@@ -454,18 +459,18 @@ this function, you should probably have some timeout mechanism.
 <P>
 
 Makes the next result set of the query the current result set, from which
-<A HREF="#dbnextrow2">dbnextrow2</A> will fetch rows. Call <A HREF="#dbresults">dbresults</A> after you have called 
+<A HREF="#dbnextrow2">dbnextrow2</A> will fetch rows. Call <A HREF="#dbresults">dbresults</A> after you have called
 <A HREF="#dbsqlexec">dbsqlexec</A>, <A HREF="#dbsqlsend">dbsqlsend</A>/<A HREF="#dbsqlok">dbsqlok</A> or <A HREF="#dbrpcsend">dbrpcsend</A>.
 
 
 <P>
 
-<A HREF="#dbresults">dbresults</A> can return any of these four values: 
+<A HREF="#dbresults">dbresults</A> can return any of these four values:
 
 
 <P>
 
-<STRONG>SUCCEED</STRONG>: result set was fetched successfully. 
+<STRONG>SUCCEED</STRONG>: result set was fetched successfully.
 
 
 <P>
@@ -484,7 +489,7 @@ batch, you must call <A HREF="#dbresults">dbresults</A> until it returns NO_MORE
 
 <STRONG>NO_MORE_RPC_RESULTS</STRONG>: there are no more results of this stored procedure, but there were more
 stored procedures in the batch, of which the result sets have not been
-processed. Applies only when you call stored procedures with 
+processed. Applies only when you call stored procedures with
 <A HREF="#dbrpcparam">dbrpcparam</A>/<A HREF="#dbrpcsend">dbrpcsend</A>.
 
 
@@ -506,7 +511,7 @@ Get the next row from the current result set. If the second parameter
 <CODE>$wantref</CODE> has a false value, the return value is a list of
 scalar values. If the first parameter <CODE>$use_hash</CODE> has a true
 value, the names of the columns are included in the list, so that you can
-receive the data into a hash. 
+receive the data into a hash.
 
 
 <P>
@@ -556,9 +561,9 @@ appear in the query.
 <P>
 
 When returning hash reference, the keys of the hash are the names of the
-columns in the result set. If there are unnamed columns, <A HREF="#dbnextrow2">dbnextrow2</A> will name them ``Col <EM>n</EM>'', where <EM>n</EM> is the column number in the result set, starting on 1. 
+columns in the result set. If there are unnamed columns, <A HREF="#dbnextrow2">dbnextrow2</A> will name them ``Col <EM>n</EM>'', where <EM>n</EM> is the column number in the result set, starting on 1.
 <STRONG>Beware!</STRONG> If two columns in the result set have the same name, obviously there is
-only room for one of them in the hash. If warnings are activated, <A HREF="#dbnextrow2">dbnextrow2</A> 
+only room for one of them in the hash. If warnings are activated, <A HREF="#dbnextrow2">dbnextrow2</A>
 will emit a warning if a name collision is detected.
 
 
@@ -589,13 +594,13 @@ until it returns NO_MORE_ROWS, unless you cancel the query with <A HREF="#dbcanq
 <P>
 
 <STRONG>NO_MORE_ROWS:</STRONG> There were no more rows to fetch. You must call <A HREF="#dbnextrow2">dbnextrow2</A>
-until you have fetched all row in the result (or cancel the query with 
+until you have fetched all row in the result (or cancel the query with
 <A HREF="#dbcanquery">dbcanquery</A>).
 
 
 <P>
 
-<STRONG>BUF_FULL:</STRONG> The row buffer is full, and you must clear the buffer with 
+<STRONG>BUF_FULL:</STRONG> The row buffer is full, and you must clear the buffer with
 <A HREF="#dbclrbuf">dbclrbuf</A>. This return value can only occur if you have set the DB-Library option
 DBBUFFER with <A HREF="#dbsetopt">dbsetopt</A>. See further the DB-Library documentation.
 
@@ -608,7 +613,7 @@ An example with <A HREF="#dbnextrow2">dbnextrow2</A> returning a hash:
 <P>
 
 <PRE>   $dbh-&gt;dbcmd(&quot;SELECT Name = name, Id = id FROM test_table&quot;);
-   $dbh-&gt;dbsqlexec; 
+   $dbh-&gt;dbsqlexec;
    $dbh-&gt;dbresults;
 </PRE>
 
@@ -626,7 +631,7 @@ This is how <A HREF="#dbnextrow2">dbnextrow2</A> return the different datatypes:
 
 <P>
 
-<STRONG>NULL:</STRONG>    <CODE>undef</CODE> or the string ``NULL'', depending on the handle attribute 
+<STRONG>NULL:</STRONG>    <CODE>undef</CODE> or the string ``NULL'', depending on the handle attribute
 <A HREF="#item_dbNullIsUndef">dbNullIsUndef</A>. The default is to return NULL as <CODE>undef</CODE>.
 
 
@@ -644,17 +649,18 @@ attributes <A HREF="#item_dateFormat">dateFormat</A> and <A HREF="#item_msecForm
 
 <P>
 
-<STRONG>float, real, numeric, decimal, money, smallmoney:</STRONG>  As float values (default) or strings, depending on the handle attribute <A HREF="#item_dbKeepNumeric">dbKeepNumeric</A>.
+<STRONG>bigint, float, real, numeric, decimal, money, smallmoney:</STRONG>  As float values (default) or strings, depending on the handle attribute <A HREF="#item_dbKeepNumeric">dbKeepNumeric</A>.
 
 
 <P>
 
-<STRONG>char, varchar, nchar, nvarchar:</STRONG> As strings. Values longer than 255 chars (a novelty in SQL Server 7) are
-truncated to 255 characters due to limitations in DB-Library. Varchar and
-nvarchar values of the empty string, will be received as a string of one
-space by DB-Library. In nchar and nvarchar strings, characters with codes
-beyond the range of 0-255 are converted to some fallback character by SQL
-Server.
+<STRONG>char, varchar, nchar, nvarchar, sql_variant:</STRONG> As strings. Values longer than 255 chars (a novelty in SQL 7) are truncated
+to 255 characters due to limitations in DB-Library. Varchar and nvarchar
+values of the empty string, will be received as a string of one space by
+DB-Library. In nchar and nvarchar strings, characters with codes beyond the
+range of 0-255 are converted to some fallback character by SQL Server.
+sql_variant (introduced in SQL 2000) are always returned as char values, no
+matter the actual base type.
 
 
 <P>
@@ -673,14 +679,14 @@ such a column, will result in an error message from SQL Server.
 <P>
 
 <STRONG>binary, varbinary, timestamp:</STRONG>  As a hex strings, with or without a leading 0x, depending on the handle
-attribute <A HREF="#item_dbBin0x">dbBin0x</A>. 
+attribute <A HREF="#item_dbBin0x">dbBin0x</A>.
 
 
 <P>
 
 <STRONG>uniqueidentifier:</STRONG>  Returned as a hex string, with or wihout a leading 0x. The regular
 formatting for a GUID is missing, and several bytes are tossed around. You
-can use the utility function <A HREF="#reformat_uniqueid">reformat_uniqueid</A> to convert it to a proper GUID string. 
+can use the utility function <A HREF="#reformat_uniqueid">reformat_uniqueid</A> to convert it to a proper GUID string.
 
 
 <P>
@@ -1016,7 +1022,7 @@ Returns a true value if the option <CODE>$opt</CODE> is set.
 constants are defined in MSSQL::DBlib::Const::Offset.
 <CODE>$startfrom</CODE> is where to start searching in the command buffer.
 Typically you would set <CODE>$startfrom</CODE> to the last returned
-<CODE>$offset</CODE> + 1 for the next search. 
+<CODE>$offset</CODE> + 1 for the next search.
 
 
 <P>
@@ -1114,14 +1120,14 @@ instance not work when you are using the debugger.
 
 <P>
 
-Pass <CODE>undef</CODE> to only uninstall the current handler. 
+Pass <CODE>undef</CODE> to only uninstall the current handler.
 
 
 <P>
 
 <STRONG>NOTE:</STRONG> MSSQL::DBlib provides a built-in default error handler which applies if you
 have not called <A HREF="#dberrhandle">dberrhandle</A> or uninstalled your own handler by passing
-<CODE>undef</CODE>. 
+<CODE>undef</CODE>.
 
 
 <P>
@@ -1211,7 +1217,7 @@ Pass <CODE>undef</CODE> to uninstall the current handler.
 
 <STRONG>NOTE:</STRONG> MSSQL::DBlib provides a built-in default message handler which applies if
 you have not called <A HREF="#dbmsghandle">dbmsghandle</A> or uninstalled your own handler by passing
-<CODE>undef</CODE>. 
+<CODE>undef</CODE>.
 
 
 <P>
@@ -1659,7 +1665,7 @@ read from or written to. Specify <CODE>undef</CODE> if you are sending data from
 
 This is a routine which is particular to MSSQL::DBlib and not available in
 DB-Library itself. It defines the number of columns to use for a bulk copy
-from program variables to SQL Server. It must be called prior to calling 
+from program variables to SQL Server. It must be called prior to calling
 <A HREF="#bcp_sendrow">bcp_sendrow</A>.
 
 
@@ -1682,7 +1688,7 @@ See <EM>eg\bcp.pl</EM> for a simple example.
 
 Sends the data in <CODE>@list</CODE> to the server. <CODE>@list</CODE> is
 assumed to contain one element for each column being updated. To send a
-NULL value set the appropriate element to <CODE>undef</CODE>. 
+NULL value set the appropriate element to <CODE>undef</CODE>.
 
 
 <P>
@@ -1838,7 +1844,7 @@ You use <STRONG>$file_prefixlen</STRONG> when you want the boundaries of the col
 determined by a length prefix. This length prefix can be 1, 2 or 4 bytes
 long. Specify 0 if you don't use a length prefix. Specify -1 to let
 DB-Library decide. (I would not recommend this; you will scratch your hair,
-trying to understand what's going.) Notice that a datatype such as <EM>int</EM> has a fixed length of 4 with one exception: for NULL the length is 0. 
+trying to understand what's going.) Notice that a datatype such as <EM>int</EM> has a fixed length of 4 with one exception: for NULL the length is 0.
 
 
 <P>
@@ -1969,7 +1975,7 @@ unless you are really having more than one procedure in the same batch.
 <H3><A NAME="dbrpcparam">dbrpcparam
 
 </A></H3>
-<PRE>   $status = $dbh-&gt;dbrpcparam($parname, $output, $type, $maxlen, 
+<PRE>   $status = $dbh-&gt;dbrpcparam($parname, $output, $type, $maxlen,
                               $datalen, $value)
 </PRE>
 
@@ -1996,7 +2002,8 @@ parameter.
 <STRONG>$type</STRONG> is the datatype of the parameter. Constants for datatypes are declared in
 MSSQL::DBlib::Const::Datatypes. All floating-point and decimal types
 (money, decimal, real etc) are converted to float before being sent to the
-server. You can specify SQLUNIQUEIDENTIFIER for the type uniqueidentifier;
+server. This also apply to bigint values. (Bigint were added in SQL2000.)
+You can specify SQLUNIQUEIDENTIFIER for the type uniqueidentifier;
 <A HREF="#dbrpcparam">dbrpcparam</A> will actually send this as SQLVARCHAR (as DB-Library does not support
 uniqueidentifier).
 
@@ -2055,12 +2062,12 @@ parameter, although SQL Server 7 supports this.
 <P>
 
 Executes a call to a stored procedure initiated with <A HREF="#dbrpcinit">dbrpcinit</A>. The parameter <CODE>$wait</CODE> determines if you want to wait for SQL
-Server to return a reply. The default is 1, to wait. 
+Server to return a reply. The default is 1, to wait.
 
 
 <P>
 
-When you specify a false value for $wait, you must later call <A HREF="#dbsqlok">dbsqlok</A> 
+When you specify a false value for $wait, you must later call <A HREF="#dbsqlok">dbsqlok</A>
 before you can fetch data with <A HREF="#dbresults">dbresults</A>.
 
 
@@ -2094,7 +2101,7 @@ procedure executed with <A HREF="#dbrpcsend">dbrpcsend</A> in the current batch.
 If the second parameter <CODE>$wantref</CODE> has a false value, the return
 value is a list of scalar values. If the first parameter
 <CODE>$use_hash</CODE> has a true value, the names of the parameters are
-included in the list, so that you can receive the data into a hash. 
+included in the list, so that you can receive the data into a hash.
 
 
 <P>
@@ -2106,7 +2113,7 @@ hash is returned, depending on $use_hash.
 <P>
 
 This function is deprecated and provided for compatibility. The preferred
-routine is <A HREF="#dbretdata2">dbretdata2</A> on top which <A HREF="#dbretdata">dbretdata</A> is implemented. See 
+routine is <A HREF="#dbretdata2">dbretdata2</A> on top which <A HREF="#dbretdata">dbretdata</A> is implemented. See
 <A HREF="#dbretdata2">dbretdata2</A> for further details.
 
 
@@ -2123,7 +2130,7 @@ routine is <A HREF="#dbretdata2">dbretdata2</A> on top which <A HREF="#dbretdata
 <P>
 
 Retrieves the values of the parameters marked as OUTPUT in a stored
-procedure executed with <A HREF="#dbrpcsend">dbrpcsend</A> in the current batch. 
+procedure executed with <A HREF="#dbrpcsend">dbrpcsend</A> in the current batch.
 
 
 <P>
@@ -2268,7 +2275,7 @@ are returned as <CODE>undef</CODE>, which is the default.
 <DT><STRONG><A NAME="item_dbKeepNumeric">dbKeepNumeric
 
 </A></STRONG><DD>
-Controls the data type of numeric values returned by <A HREF="#dbnextrow2">dbnextrow2</A> and 
+Controls the data type of numeric values returned by <A HREF="#dbnextrow2">dbnextrow2</A> and
 <A HREF="#dbretdata2">dbretdata2</A>. If unset, numeric varaibles are returned to Perl as string variables. If
 set, numeric values appear as numeric in Perl, which is the default.
 
@@ -2289,7 +2296,7 @@ Controls how binary values are returned by <A HREF="#dbnextrow2">dbnextrow2</A> 
 <DT><STRONG><A NAME="item_msecFormat">msecFormat
 
 </A></STRONG><DD>
-These control how <EM>datetime</EM> and <EM>smalldatetime</EM> values are converted to strings by <A HREF="#dbnextrow2">dbnextrow2</A> and <A HREF="#dbretdata2">dbretdata2</A>. <A HREF="#item_dateFormat">dateFormat</A> controls how everything but the milliseconds are formatted, while <A HREF="#item_msecFormat">msecFormat</A> takes care of that part, including the millisecond delimiter. (Obviously, 
+These control how <EM>datetime</EM> and <EM>smalldatetime</EM> values are converted to strings by <A HREF="#dbnextrow2">dbnextrow2</A> and <A HREF="#dbretdata2">dbretdata2</A>. <A HREF="#item_dateFormat">dateFormat</A> controls how everything but the milliseconds are formatted, while <A HREF="#item_msecFormat">msecFormat</A> takes care of that part, including the millisecond delimiter. (Obviously,
 <A HREF="#item_msecFormat">msecFormat</A> does not apply to smalldatetime values.)
 
 
@@ -2322,7 +2329,7 @@ A selection of format codes for <A HREF="#item_dateFormat">dateFormat</A> follow
 <P>
 
 <STRONG>Note:</STRONG> Looking at a Solaris manpage for <EM>strftime</EM>, there appears to be differences to what Visual C++ provides. The codes
-above seem to coincide, though. 
+above seem to coincide, though.
 
 
 <P>
@@ -2539,7 +2546,7 @@ The 2PC calls have not been tested.
 
 This version of MSSQL::DBlib have been tested SQL 6.5 and SQL 7.0 but not
 with SQL 6.0 or SQL 4.21. Binaries included in the distribution are not
-likely to work with 6.0 and 4.21. You must also remove <A HREF="#DBSETLFALLBACK">DBSETLFALLBACK</A> 
+likely to work with 6.0 and 4.21. You must also remove <A HREF="#DBSETLFALLBACK">DBSETLFALLBACK</A>
 to build MSSQL::DBlib with 6.0 and 4.21. 4.21 may require further
 deletions.
 
@@ -2578,7 +2585,7 @@ The following routines available in Sybperl 2.03 are missing:
 <P>
 
 <EM>DBSETLCHARSET</EM>, <EM>bcp_getl</EM>, <EM>dbgetpacket</EM>, the <EM>dbmny*</EM> routines,
-<EM>dbrecftos</EM>, <EM>dbsafestr</EM>, <EM>dbsetifile</EM>, <EM>dbversion</EM>, <EM>dbrpwset</EM>, 
+<EM>dbrecftos</EM>, <EM>dbsafestr</EM>, <EM>dbsetifile</EM>, <EM>dbversion</EM>, <EM>dbrpwset</EM>,
 <EM>dbrpwset</EM>, <EM>scan_xact</EM>.
 
 

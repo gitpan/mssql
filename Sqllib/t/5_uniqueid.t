@@ -1,11 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/MSSQL/sqllib/t/5_uniqueid.t 1     99-01-30 16:36 Sommar $
+# $Header: /Perl/MSSQL/Sqllib/t/5_uniqueid.t 2     00-09-09 18:11 Sommar $
 #
 # This test script test usage of the new datatype uniqueidentifier.
 # It can only run against SQL Server 7.
 #
 # $History: 5_uniqueid.t $
 # 
+# *****************  Version 2  *****************
+# User: Sommar       Date: 00-09-09   Time: 18:11
+# Updated in $/Perl/MSSQL/Sqllib/t
+# Use new attribute SQL_version.
+#
 # *****************  Version 1  *****************
 # User: Sommar       Date: 99-01-30   Time: 16:36
 # Created in $/Perl/MSSQL/sqllib/t
@@ -22,17 +27,13 @@ $^W = 1;
 
 $| = 1;
 
-my($sql, $sql_version);
+my($sql);
 
 use vars qw($Srv $Uid $Pwd);
 require &dirname($0) . '\sqllogin.pl';
 $sql = sql_init($Srv, $Uid, $Pwd, "tempdb");
 
-$sql_version = sql_one('SELECT @@VERSION', SCALAR);
-$sql_version =~ /\d+\.\d+\.\d+/;
-$sql_version = $&;
-
-if (not $sql_version or $sql_version =~ /^[0-6]/) {
+if ($sql->{SQL_version} =~ /^[0-6]/) {
    print "Skipping this test; uniqueidentifier not available\n";
    print "1..0\n";
    exit;

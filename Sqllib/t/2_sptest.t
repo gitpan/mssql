@@ -1,11 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/MSSQL/Sqllib/t/2_sptest.t 2     00-05-08 22:23 Sommar $
+# $Header: /Perl/MSSQL/Sqllib/t/2_sptest.t 3     00-07-24 22:10 Sommar $
 #
 # This test script tests using sql_sp and sql_insert in all possible
 # ways and with testing use of all datatypes.
 #
 # $History: 2_sptest.t $
 # 
+# *****************  Version 3  *****************
+# User: Sommar       Date: 00-07-24   Time: 22:10
+# Updated in $/Perl/MSSQL/Sqllib/t
+# Changed nullif argument for bincol due to bug(?) in SQL 2000 Beta 2.
+#
 # *****************  Version 2  *****************
 # User: Sommar       Date: 00-05-08   Time: 22:23
 # Updated in $/Perl/MSSQL/Sqllib/t
@@ -98,7 +103,7 @@ sub create_sp {
    SELECT @intcol       = 2 * intcol,
           @smallintcol  = 2 * smallintcol,
           @tinyintcol   = 2 * tinyintcol,
-          @bincol       = nullif(bincol, 0),
+          @bincol       = nullif(bincol, 0x0),
           @varbincol    = varbincol,
           @datecol      = dateadd(dd, 3, datecol),
           @smalldatecol = dateadd(dd, 2, smalldatecol),
@@ -114,7 +119,7 @@ sub create_sp {
           @tstamp       = tstamp
    FROM   #nisse
 
-   SELECT intcol, smallintcol, tinyintcol, bincol = nullif(bincol, 0),
+   SELECT intcol, smallintcol, tinyintcol, bincol = nullif(bincol, 0x0),
           varbincol, datecol, smalldatecol, charcol = nullif(charcol, ' '),
           varcharcol, deccol = nullif(deccol, 0), numcol = nullif(numcol, 0),
           floatcol, realcol, moneycol, dimecol, bitcol, tstamp,

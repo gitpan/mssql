@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/MSSQL/Sqllib/sqllib.pm 4     00-05-03 21:36 Sommar $
+# $Header: /Perl/MSSQL/Sqllib/sqllib.pm 7     00-09-14 22:37 Sommar $
 # Copyright (c) 1997-1999 Erland Sommarskog
 #
 #   I don't care under which license you use this, as long as you don't
@@ -7,6 +7,22 @@
 #
 # $History: sqllib.pm $
 # 
+# *****************  Version 7  *****************
+# User: Sommar       Date: 00-09-14   Time: 22:37
+# Updated in $/Perl/MSSQL/Sqllib
+# Added error 3622 (Domain error) to the default for alwaysPrint.
+#
+# *****************  Version 6  *****************
+# User: Sommar       Date: 00-09-09   Time: 18:12
+# Updated in $/Perl/MSSQL/Sqllib
+# MSSQL::Sqllib 1.007: Support for SQL2000 and new attribute SQL_version.
+#
+# *****************  Version 5  *****************
+# User: Sommar       Date: 00-07-25   Time: 17:47
+# Updated in $/Perl/MSSQL/Sqllib
+# Fixed sql_set_conversion, so that default value for the server charset
+# is retrieved correctly for SQL Server 2000.
+#
 # *****************  Version 4  *****************
 # User: Sommar       Date: 00-05-03   Time: 21:36
 # Updated in $/Perl/MSSQL/Sqllib
@@ -34,7 +50,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS
             %VARLENTYPES %STRINGTYPES %LARGETYPES %QUOTEDTYPES %BINARYTYPES
             $VERSION);
 
-$VERSION = "1.006";
+$VERSION = "1.007";
 
 use MSSQL::DBlib;
 use MSSQL::DBlib::Const::General;
@@ -152,6 +168,18 @@ sub sql_init {
        }
     }
 
+    # Get SQL version. First check for a really antique version:
+    my $has_msver = $X->sql_one("SELECT COUNT(*) FROM master..sysobjects WHERE " .
+                                "name = 'xp_msver'");
+    if ($has_msver) {
+       my %sqlversion = $X->sql_one("EXEC master..xp_msver 'ProductVersion'");
+       $X->{SQL_version} = $sqlversion{'Character_Value'};
+    }
+    else {
+       $X->{SQL_version} = "4.21";
+    }
+
+
     # Turn off ANSI -> OEM
     $X->dbclropt(DBANSItoOEM);
     $X->dbclropt(DBOEMtoANSI);
@@ -202,16 +230,28 @@ sub sql_set_conversion
     # Now the server charset. If no charset given, query the server.
     if (not $server_cs) {
        my($clone) = $X->clone_for_internal_call();
-       $server_cs = $clone->sql_one(<<SQLEND);
-            SELECT chs.name
-            FROM   master..syscharsets sor, master..syscharsets chs,
-                   master..syscurconfigs cfg
-            WHERE  cfg.config = 1123
-              AND  sor.id     = cfg.value
-              AND  chs.id     = sor.csid
+
+       if ($X->{SQL_version} =~ /^[467]\./) {
+          # SQL Server 7.0 or earlier.
+          $server_cs = $clone->sql_one(<<SQLEND);
+               SELECT chs.name
+               FROM   master..syscharsets sor, master..syscharsets chs,
+                      master..syscurconfigs cfg
+               WHERE  cfg.config = 1123
+                 AND  sor.id     = cfg.value
+                 AND  chs.id     = sor.csid
 SQLEND
+       }
+       else {
+          # Modern stuff, SQL 2000 or later.
+          $server_cs = $clone->sql_one(<<SQLEND);
+             SELECT collationproperty(
+                    CAST(serverproperty ("collation") as nvarchar(255)),
+                    "CodePage")
+SQLEND
+       }
     }
-    if ($server_cs =~ /^iso_1$/i) {    # iso_1 is how SQL reports Latin-1.
+    if ($server_cs =~ /^iso_1$/i) {    # iso_1 is how SQL6&7 reports Latin-1.
        $server_cs = "1252";            # CP1252 is the Latin-1 code page.
     }
     $server_cs =~ s/^cp_?//i;
@@ -450,10 +490,13 @@ sub sql_sp {
           croak "Could not get object id for procedure '$SP'";
        }
 
-       # Now, inquire about all the columns in the table and their type
+       # Now, inquire about all the columns in the table and their type.
+       # Different handling for different SQL Versions.
+       my ($typecol) = ($X->{SQL_version} =~ /^[46]\./ ? "type" :
+                        "CASE WHEN xtype = 36 THEN xtype ELSE type END");
        my($DBRPCRETURN) = DBRPCRETURN;
        @paraminfo = $clone->sql(<<SQLEND, HASH);
-           SELECT name, colid, type,
+           SELECT name, colid, type = $typecol,
                   is_output = CASE status & 0x40
                                  WHEN 0 THEN 0
                                  ELSE $DBRPCRETURN
@@ -665,10 +708,12 @@ sub sql_insert {
        }
 
        # Now, inquire about all the columns in the table and their type
+       my ($typecol) = ($X->{SQL_version} =~ /^[46]\./ ? "type" :
+                        "CASE WHEN xtype = 36 THEN xtype ELSE type END");
        $tbldef = $clone->sql(<<SQLEND, SCALAR, KEYED, [1]);
-           SELECT c.name, c.type
-           FROM   $objdb..syscolumns c
-           WHERE  c.id   = $objid
+           SELECT name, type = $typecol
+           FROM   $objdb..syscolumns
+           WHERE  id = $objid
 SQLEND
 
        # Save it for future calls.
@@ -868,7 +913,7 @@ sub new_err_info {
     $errInfo{printText}      = 0;
     $errInfo{printLines}     = 11;
     $errInfo{neverPrint}     = {'5701' => 1, '5703' => 1, -SQLESMSG() => 1};
-    $errInfo{alwaysPrint}    = {'3606' => 1, '3607' => 1};
+    $errInfo{alwaysPrint}    = {'3606' => 1, '3607' => 1, '3622' => 1};
     $errInfo{maxSeverity}    = 10;
     $errInfo{maxLibSeverity} = 1;
     $errInfo{neverStopOn}    = {-SQLESMSG() => 1};

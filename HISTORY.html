@@ -7,6 +7,34 @@
 <CENTER>
 <H1>History MSSQL modules</H1>
 </CENTER>
+<H3>000914</H3>
+MSSQL::Sqllib 1.007 released.
+<H4>News for MSSQL::DBlib</H4>
+<UL>
+   <LI>No actual changes in program code.
+   </LI>
+   <LI>Minor documentation updates for SQL 2000.
+   </LI>
+</UL>
+<H4>News for MSSQL::Sqllib</H4>
+<UL>
+   <LI>New handle attribute <A HREF="docs/mssql-sqllib.html#item_SQL_version">
+       SQL_version</A>, gives you the SQL Server version.
+   </LI>
+   <LI>Message 3622, <I>A domain error occurred</I> is now in
+       <A HREF="docs/mssql-sqllib.html#item_alwaysPrint">alwaysPrint</A> by
+       default.
+   </LI>
+   <LI>Minor adaptions to resolve things that broke with SQL 2000.
+   </LI>
+</UL>
+<H4>Known issues</H4>
+I have had problems with compatibility between NT4 and Windows 2000 with
+Perl 5.005, but no other Perl version. These problems have not been
+specifically with MSSQL::*, but more of a general nature. The binary
+shipped for AS 5xx is built with NT4. The binaries for ActivePerl 5.6 and
+AS 3xx are built with Windows 2000.
+</CENTER>
 <H3>000505</H3>
 MSSQL::DBlib 1.006 and MSSQL::Sqllib 1.006 released.
 <H4>News for MSSQL::DBlib</H4>
@@ -170,6 +198,6 @@ Initial release for ActiveState Perl only.
 <P>
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 00-05-05 22:44 <!-- $-->
+Last updated <!--$$Modtime:--> 00-09-14 23:04 <!-- $-->
 </I>
 <BODY>
