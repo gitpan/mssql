@@ -47,9 +47,9 @@ All these tests do of course require that MSSQL::DBlib is present, as
 MSSQL::Sqllib is an heir of MSSQL::DBlib.
 <P>
 <B>1_resultsets.t</B> tests the various row and result styles. There are no known
-issues with this script. If you are bewildered by resulting structure of the
-various combinations of row and result styles, you might get an idea by studying
-this script.
+issues with this script, except that test 73 fails if you run without warnings.
+If you are bewildered by resulting structure of the various combinations of row
+and result styles, you might get an idea by studying this script.
 <P>
 <B>2_sptest.t</B> tests <A HREF="docs/mssql-sqllib.html#sql_sp">sql_sp</A> and
 <A HREF="docs/mssql-sqllib.html#sql_insert">sql_insert</A>. The script also
@@ -78,7 +78,7 @@ test is skipped if your server is running 6.5 or lower.
 <P>
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 99-01-29 22:49 <!-- $-->
+Last updated <!--$$Modtime:--> 00-04-24 23:04 <!-- $-->
 </I>
 
 </HTML>

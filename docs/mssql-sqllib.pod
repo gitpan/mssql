@@ -1,6 +1,21 @@
-$Header: /Perl/MSSQL/docs/mssql-sqllib.pod 2     99-01-30 16:52 Sommar $
+$Header: /Perl/MSSQL/docs/mssql-sqllib.pod 5     00-05-03 22:01 Sommar $
 
 $History: mssql-sqllib.pod $
+# 
+# *****************  Version 5  *****************
+# User: Sommar       Date: 00-05-03   Time: 22:01
+# Updated in $/Perl/MSSQL/docs
+# Rewrote text on Windows NT authentication.
+# 
+# *****************  Version 4  *****************
+# User: Sommar       Date: 00-02-19   Time: 20:44
+# Updated in $/Perl/MSSQL/docs
+# Added errFileHandle to errInfo.
+# 
+# *****************  Version 3  *****************
+# User: Sommar       Date: 99-10-02   Time: 21:43
+# Updated in $/Perl/MSSQL/docs
+# Corrected typos.
 # 
 # *****************  Version 2  *****************
 # User: Sommar       Date: 99-01-30   Time: 16:52
@@ -182,8 +197,9 @@ B<$database>: the user's default database as defined in SQL Server, with
 one exception: for I<sa>, the database will be I<tempdb> to avoid a disaster,
 were you to accidently omit $database.
 
-To use integrated security, call the MSSQL::DBlib routine L</DBSETLSECURE>
-before calling L</sql_init>.
+To use B<Windows NT authentication> (known as "integrated security" MS SQL 6.5), 
+call the MSSQL::DBlib routine L<mssql-dblib/DBSETLSECURE> prior to 
+calling L</sql_init>.
 
 The following initializations are performed:
 
@@ -930,6 +946,9 @@ Some of the components are arrays and hashes themselves. A pseudo-code
 declaration with default values of L</errInfo> looks like this:
 
       RECORD errInfo 
+          -- Where to write error messages
+          errFileHandle  IO::File = STDERR;
+
           -- Abort control for sql_message_handler and sql_error_handler
           dieFlag        flag;
           maxSeverity    integer = 10;
@@ -973,6 +992,14 @@ Notice that you cannot use L</errInfo> to control the behaviour during L</sql_in
 
 =over 4
 
+=item errFileHandle
+
+Where L</sql_message_handler> and L</sql_error_handler> are to write their
+messages. Initially C<undef>, which will cause the handlers to write to STDERR.
+Set C<errFileHandle> to a filehandle open for write to override this. 
+C<errFileHandle> is useful, when you want to save SQL errors to a file,
+but still want to see unexpected Perl warnings directly in the command window. 
+
 =item dieFlag
 
 This is a read-only flag set by L</sql_message_handler> or 
@@ -1002,7 +1029,7 @@ L</sql_error_handler> will set the C<dieFlag> when receiving messsages
 with severity above C<maxLibSeverity>. See also C<neverStopOn> and C<alwaysStopOn>
 below. Default: B<1> (= EXINFO).
 
-Constants for DB-Library severities are defined in MSSQL::DBlib::Consts::Severity.
+Constants for DB-Library severities are defined in MSSQL::DBlib::Const::Severity.
 
 =item neverStopOn
 
@@ -1012,7 +1039,7 @@ errors, the error numbers are negated. Thus if C<neverStopOn>{-$dberr} is set,
 L</sql_error_handler> will not set C<dieFlag>. C<neverStopOn> overrides
 C<maxSeverity> and C<maxLibSeverity>.
 
-Constants for DB-Library errors are defined in MSSQL::DBlib::Consts::Errors.
+Constants for DB-Library errors are defined in MSSQL::DBlib::Const::Errors.
 If follows from the above that you must say:
 
     $sql->{errInfo}{neverStopOn}{-SQLECOFL()}

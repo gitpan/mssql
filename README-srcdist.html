@@ -4,8 +4,8 @@
 </HEAD>
 <BODY>
 <BODY>
-<H1><CENTER>MSSQL::DBlib 1.005<BR>
-    MSSQL::Sqllib 1.005</CENTER></H1>
+<H1><CENTER>MSSQL::DBlib 1.006<BR>
+    MSSQL::Sqllib 1.006</CENTER></H1>
 <UL>
 <P>
      This is MSSQL, classes for calling DB-Library for Microsoft SQL
@@ -13,7 +13,7 @@
 <P>
      Copyright © 1991-1995 Michael Peppler<BR>
      Copyright © 1996      Christian Mallwitz, Intershop Gmbh<BR>
-     Copyright © 1997-1999 Erland Sommarskog<BR>
+     Copyright © 1997-2000 Erland Sommarskog<BR>
      All rights reserved.<BR>
 <P>
   This program is free software; you can redistribute it and/or modify
@@ -31,14 +31,18 @@ class, with an interface which is focused on being simple to use.
 <H3>Alternative distribution</H3>
 This is a source-only distribution, and you will need a C++ compiler and a
 MAKE utility to install it. At my web site you can find binary distributions
-(with source included) for ActiveState 3xx and 5xx:
+(with source included) for ActivePerl:
 <UL>
-<LI> <A HREF="http://www.algonet.se/~sommar/mssql/mssql-as3xx-1.005.zip">
-     http://www.algonet.se/~sommar/mssql/mssql-as3xx-1.005.zip</A> - ActiveState Build 306-316.
-</LI>
-<LI> <A HREF="http://www.algonet.se/~sommar/mssql/mssql-as5xx-1.005.zip">
-     http://www.algonet.se/~sommar/mssql/mssql-as5xx-1.005.zip</A> - ActiveState Build 5xx.
-</LI>
+   <LI> <A HREF="http://www.algonet.se/~sommar/mssql/mssql-as5xx-1.006.zip">
+        http://www.algonet.se/~sommar/mssql/mssql-as5xx-1.006.zip</A> -
+        Binary (Intel) distribution for ActivePerl 5xx (Perl 5.005).
+   <LI> <A HREF="http://www.algonet.se/~sommar/mssql/mssql-active5.6-1.006.zip">
+        http://www.algonet.se/~sommar/mssql/mssql-active5.6-1.006.zip</A> -
+        Binary (Intel) distribution for ActivePerl 6xx (Perl 5.6).
+   <LI> <A HREF="http://www.algonet.se/~sommar/mssql/mssql-as3xx-1.006.zip">
+        http://www.algonet.se/~sommar/mssql/mssql-as3xx-1.006.zip</A> -
+        Binary (Intel) distribution for the old ActiveState Perl 3xx
+        (Perl 5.003).
 </UL>
 
 <H3>Prerequisites</H3>
@@ -46,15 +50,15 @@ To install this you need.
 <UL>
 <LI> Include files and link libraries DB-Library for MS SQL Server 6.5 or higher.
      These are in the Programmers Toolkit, which is on the SQL Workstation CD as
-     the MSDN disks. It's also included on the SQL Server 7 CD. </LI>
-<LI> A Perl 5.004 or higher installed on NT. </LI>
+     the MSDN disks. They are also included on the SQL Server 7 CD. </LI>
+<LI> A Perl 5.004 or higher installed on NT or Win2000. </LI>
 <LI> C++ compiler. (I don't think a mere C compiler would do). If you don't have
      a C++ compiler GNU has a free compiler. (Sorry, I don't have a URL.) </LI>
 <LI> A make facility. You can get Microsofts NMAKE (for x86) on:
      <A HREF="ftp://ftp.microsoft.com/Softlib/MSLFILES/nmake15.exe">
      ftp://ftp.microsoft.com/Softlib/MSLFILES/nmake15.exe</A></LI>
-<LI> I have only run this under NT4 SP3&4, but I would expect it work with
-     Win95 and NT3.51 as well. It will not run on Win3.11.</LI>
+<LI> I have only built this under NT4 SP3-5, but I would expect it work with
+     Windows 2000, Win95/98 and NT3.51 as well. It will not run on Win3.11.</LI>
 </UL>
 
 If you only have MS SQL Server 6.0 or 4.2:
@@ -99,11 +103,19 @@ is a simple file that just builds the HTML files locally.
 The directory <I>eg</I> contains a small collection of sample scripts, some
 that I've inherited from the Sybperl distribution. You also find one utility
 that might be useful, SPTRITEST, which tests all stored procedures in a
-database for trivial errors. <B>WARNING!</B> Don't run SPTRITEST on a live
-database, but only a database you can afford to waste. There is a separate
+database for trivial errors. <B>WARNING!</B> Don't run SPTRITEST in a live
+database, but only in a database you can afford to waste. There is a separate
 <A HREF="eg/README.html">README</A> for this directory.
 
 <H3>Reporting bugs or problems</H3>
+Please mail bug reports and suggestions to <A HREF="mailto:sommar-perl@algonet.se">
+sommar-perl@algonet.se</A>. Try to make your reports as specific as possible.
+Particularly don't forget to include which versions of Perl, NT, SQL Server etc
+you are using, and not the least which zip file you downloaded.
+<P>
+Please have patience with me, if I cannot address your issue
+on the spot. I am sometimes a busy man. ...and don't forget to read the manual!
+
 Please mail bug reports and suggestions to <A HREF="mailto:sommar-perl@algonet.se">
 sommar-perl@algonet.se</A>. Try to make your reports as specific as possible.
 Paricularly don't forget to include which versions of Perl, NT, SQL Server etc
@@ -112,7 +124,7 @@ on the spot. I am sometimes a busy man. ...and don't forget to read the manual!
 <P>
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 99-01-30 19:49 <!-- $-->
+Last updated <!--$$Modtime:--> 00-05-03 22:42 <!-- $-->
 </I>
 </BODY>
 </HTML>

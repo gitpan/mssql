@@ -1,6 +1,17 @@
-$Header: /Perl/MSSQL/docs/mssql-dblib.pod 2     99-01-30 16:52 Sommar $
+$Header: /Perl/MSSQL/docs/mssql-dblib.pod 4     00-05-03 22:02 Sommar $
 
 $History: mssql-dblib.pod $
+# 
+# *****************  Version 4  *****************
+# User: Sommar       Date: 00-05-03   Time: 22:02
+# Updated in $/Perl/MSSQL/docs
+# Added text on setting hostname, brushed up text on Windows NT
+# authentication. Added dbgetoff and new parameters on dbstrcpy.
+# 
+# *****************  Version 3  *****************
+# User: Sommar       Date: 00-02-19   Time: 20:44
+# Updated in $/Perl/MSSQL/docs
+# Added dbcount and dbiscount.
 # 
 # *****************  Version 2  *****************
 # User: Sommar       Date: 99-01-30   Time: 16:52
@@ -91,9 +102,16 @@ described in the section L</Handle Attributes>.
 
 You can also set user, password and application name in advance with the
 L</DBSETLUSER>, L</DBSETLPWD> and L</DBSETLAPP> calls and leave these out when
-calling L</dblogin> or L</dbopen>. If you don't provide a server name,
-DB-Library will apply its defaults. To use integrated security, call 
-L</DBSETLSECURE> before calling L</dblogin> or L</dbopen>.
+calling L</dblogin> or L</dbopen>. You cannot specify a host name with
+L</dblogin>, however you can set it with L</DBSETLHOST> prior to calling
+L</dblogin>. By default, MSSQL::DBlib sets the hostname to value of the 
+environment variable COMPUTERNAME.
+
+If you don't provide a server name,DB-Library will apply its defaults. 
+
+To use B<Windows NT authentication> (known as "Integrated Security" in 
+SQL 6.5), call L</DBSETLSECURE> before calling L</dblogin> or L</dbopen>. 
+In this case SQL Server will ignore $user and $pwd.
 
 L</dblogin> is somewhat confusing if you are acquainted with DB-Library for C.
 To wit, the real call to the DB-Library namesake is in fact performed when
@@ -366,13 +384,23 @@ Returns SUCCEED if the current command can return rows.
 
 Returns SUCCEED if the current command did return rows.
 
-=head3 DBCOUNT
+=head3 DBCOUNT, dbcount
 
     $count = $dbh->DBCOUNT
+    $count = $dbh->dbcount
 
 Returns the number of rows that the current command affected. Notice
 that for a SELECT statement you will not get a correct answer from
 L</DBCOUNT> until you have retrieved all rows with L</dbnextrow2>.
+
+You can check with L</dbiscount> whether the value you get is "real". (Yeah
+this is what the DB-Library documentation says.)
+
+=head3 dbiscount
+
+    $isreal = $dbh->dbiscount
+
+Returns whether the number by L</DBCOUNT, dbcount> is "real" or not.
 
 =head3 DBCURROW
 
@@ -409,9 +437,13 @@ Returns the name of column $colid in the current result set.
 
 =head3 dbstrcpy
 
-   $string = $dbh->dbstrcpy
+   $string = $dbh->dbstrcpy [($start [, $numbytes])]
 
-Returns the contents of the command buffer.
+Returns the contents of the command buffer. $start is the position to 
+start copying from. Default is 0, the first character in the buffer.
+When negative, $numbytes asks for the entire buffer to be returned. 
+When >= 0, at most $numbytes characters are returned. Default is -1, 
+return everything.
 
 =head3 dbsetopt
 
@@ -440,6 +472,23 @@ with L</dbsetopt>.
    $ret = $dbh->dbisopt($opt [, $char_val])
 
 Returns a true value if the option $opt is set.
+
+=head3 dbgetoff
+
+   $offset = $dbh->dbgetoff($offtype, $startfrom)
+
+L</dbgetoff> returns offsets to T-SQL statements in the command buffer.
+$offtype is a constant telling what you want offsets to. These constants
+are defined in MSSQL::DBlib::Const::Offset. $startfrom is where to start
+searching in the command buffer. Typically you would set $startfrom to
+the last returned $offset + 1 for the next search. 
+
+To get offset information, you need to set the option DBOFFSET, please
+refer to Books Online for this.
+
+Note: I've played with this function both in SQL 6.5 and SQL 7 to get 
+offsets to T-SQL statements and I didn't the results I got were neither
+useful nor consistent. Use at your own risk.
 
 =head3 dbwritetext
 

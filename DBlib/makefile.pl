@@ -1,10 +1,15 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/MSSQL/DBlib/makefile.pl 1     99-01-30 17:06 Sommar $
+# $Header: /Perl/MSSQL/DBlib/makefile.pl 2     99-02-25 22:31 Admin $
 #
 # Makefile.pl for MSSQL::DBlib. Note that you need to tell where you
 # have the include and library files for DB-Library.
 #
 # $History: makefile.pl $
+# 
+# *****************  Version 2  *****************
+# User: Admin        Date: 99-02-25   Time: 22:31
+# Updated in $/Perl/MSSQL/DBlib
+# Moved my SQL tools to a new place.
 # 
 # *****************  Version 1  *****************
 # User: Sommar       Date: 99-01-30   Time: 17:06
@@ -13,8 +18,10 @@
 
 
 use ExtUtils::MakeMaker;
-$SQLDIR  = 'C:\SQL65\DBLIB';    # This is where I have my DBlib files, where are yours?
-#$SQLDIR  = 'E:\MSSQL7\DEVTOOLS';
+
+# This is where I have my DBlib files, where are yours?
+$SQLDIR  = 'F:\MSSQL7\DEVTOOLS';
+
 WriteMakefile(
     'DEFINE'       => '-DCORE_PORT',
     'INC'          => "-I$SQLDIR\\INCLUDE",

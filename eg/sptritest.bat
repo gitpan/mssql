@@ -225,11 +225,13 @@ sub examine_msgs {
 # errors, bound to happen due to the nonsense we send as parameters.
 
    # These are errors we ignore:
-   my(@ignored_errors) = (513,  # RULE violation
+   my(@ignored_errors) = (0,    # PRINT statements
+                          513,  # RULE violation
                           515,  # Attempt to insert NULL.
                           532,  # timestamp error
-                          547,  # CONSTRAINT violation
+                          547,  # CONSTRATINT violation
                           2627, # PRIMARY KEY violation
+                          3621, # Command has been aborted
                           );
 
    my($name_printed) = 0;
@@ -237,11 +239,8 @@ sub examine_msgs {
    # Iterate over the message array.
    my $msg;
    foreach $msg (@{$X->{errInfo}{messages}}) {
-      # Skip if severity <= 10 (information).
-      next if $msg->{'severity'} <= 10;
-
-      # Skip user-defined errors, and as defined above.
-      next if $msg->{'errno'} >= 50000 or
+      # Skip user-defined errors, DB-lib errors, and those we defined above.
+      next if $msg->{'errno'} >= 50000 or $msg->{'state'} < 0 or
               grep($_ == $msg->{'errno'}, @ignored_errors);
 
       # Print a heading for the first error for this item.
@@ -271,9 +270,9 @@ sub setup_errinfo{
    $X->{errInfo}{printMsg} = 30;
    $X->{errInfo}{printText} = 30;
    $X->{errInfo}{printLines} = 30;
-   $X->{errInfo}{alwaysPrint} = undef;
    $X->{errInfo}{checkRetStat} = 0;
    $X->{errInfo}{saveMessages} = 1;
+   delete $X->{errInfo}{alwaysPrint};
 }
 
 __END__

@@ -1,10 +1,21 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/MSSQL/sqllib/t/4_errors.t 1     99-01-30 16:36 Sommar $
+# $Header: /Perl/MSSQL/Sqllib/t/4_errors.t 3     00-05-08 22:22 Sommar $
 #
 # Tests sql_message_handler and sql_error_handler.
 #
 # $History: 4_errors.t $
 # 
+# *****************  Version 3  *****************
+# User: Sommar       Date: 00-05-08   Time: 22:22
+# Updated in $/Perl/MSSQL/Sqllib/t
+# Fixed problem that could cause test to fail if @@servername was not
+# defined.
+#
+# *****************  Version 2  *****************
+# User: Sommar       Date: 00-02-19   Time: 20:46
+# Updated in $/Perl/MSSQL/Sqllib/t
+# Modified tests to cover errFileHandle as well.
+#
 # *****************  Version 1  *****************
 # User: Sommar       Date: 99-01-30   Time: 16:36
 # Created in $/Perl/MSSQL/sqllib/t
@@ -43,8 +54,7 @@ $msgtext   = "Er geht an die Ecke.";
 $sql       = qq!RAISERROR("$msgtext", $sev, $state)!;
 $sql_call  = "sql(q!$sql!, undef, NORESULT)";
 $sp_call   = "sql_sp('##nisse_sp', ['$msgtext', $sev])";
-$Srv       = sql_one('SELECT @@servername', SCALAR);
-$msg_part  = "SQL Server message $errno, Severity $sev, State $state, Server $Srv";
+$msg_part  = "SQL Server message $errno, Severity $sev, State $state(, Server .+)?";
 $linestart = '\s\s\s+1>\s+';
 $sp_sql    = "EXEC ##nisse_sp (\\\@msgtext = '$msgtext', \\\@sev = $sev|\\\@sev = $sev, \\\@msgtext = '$msgtext')";
 $X->sql(<<SQLEND);
@@ -55,7 +65,7 @@ SQLEND
 
 # First test. Should die and print it all.
 $sev   = 11;
-$expect_print = ["=~ /^$msg_part\n/i",
+$expect_print = ["=~ /^$msg_part\\n/i",
                  "=~ /Procedure\\s+##nisse_sp\\s+Line 2/",
                  "eq '$msgtext\n'",
                  "=~ /$linestart$sp_sql\E\n/"];
@@ -147,25 +157,42 @@ exit;
 sub do_test{
    my($test, $test_no, $expect_die, $expect_print, $expect_msgs) = @_;
 
-   my($savestderr, $errfile);
+   my($savestderr, $errfile, $fh);
 
-   # Save STDERR so we can reopen.
-   $savestderr = FileHandle->new_from_fd(*main::STDERR, "w") or die "Can't dup STDERR: $!\n";
-
-   # Redirect STDERR to a file.
+   # Get file name.
    $errfile = &dirname($0) . "\\error.$test_no";
-   open(STDERR, ">$errfile") or die "Can't redriect STDERR to '$errfile': $!\n";
-   STDERR->autoflush;
+
+   if ($test_no % 2 == 0) {
+      delete $X->{errInfo}{errFileHandle};
+
+      # Save STDERR so we can reopen.
+      $savestderr = FileHandle->new_from_fd(*main::STDERR, "w") or die "Can't dup STDERR: $!\n";
+
+      # Redirect STDERR to a file.
+      open(STDERR, ">$errfile") or die "Can't redriect STDERR to '$errfile': $!\n";
+      STDERR->autoflush;
+   }
+   else {
+      # Test errFileHandle
+      $fh = new FileHandle;
+      $fh->open($errfile, "w") or die "Can't write to '$errfile': $!\n";
+      $X->{errInfo}{errFileHandle} = $fh;
+   }
 
    # Run the test. Must eval, it may die.
    eval($test);
 
-   # Put STDERR back to were it was.
-   open(STDERR, ">&" . $savestderr->fileno) or (print "Can't reopen STDERR: $!\n" and die);
-   STDERR->autoflush;
+   if ($test_no % 2 == 0) {
+      # Put STDERR back to were it was.
+      open(STDERR, ">&" . $savestderr->fileno) or (print "Can't reopen STDERR: $!\n" and die);
+      STDERR->autoflush;
+   }
+   else {
+      $fh->close;
+   }
 
    # Now, read the error file.
-   my $fh = new FileHandle;
+   $fh = new FileHandle;
    $fh->open($errfile, "r") or die "Cannot read $errfile: $!\n";
    my @errfile = <$fh>;
    $fh->close;

@@ -1,11 +1,16 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/MSSQL/sqllib/t/2_sptest.t 1     99-01-30 16:36 Sommar $
+# $Header: /Perl/MSSQL/Sqllib/t/2_sptest.t 2     00-05-08 22:23 Sommar $
 #
 # This test script tests using sql_sp and sql_insert in all possible
 # ways and with testing use of all datatypes.
 #
 # $History: 2_sptest.t $
 # 
+# *****************  Version 2  *****************
+# User: Sommar       Date: 00-05-08   Time: 22:23
+# Updated in $/Perl/MSSQL/Sqllib/t
+# Enhanced test for text and image to use really big stuff.
+#
 # *****************  Version 1  *****************
 # User: Sommar       Date: 99-01-30   Time: 16:36
 # Created in $/Perl/MSSQL/sqllib/t
@@ -21,6 +26,7 @@ sub blurb{
 }
 
 use MSSQL::Sqllib qw(:DEFAULT :consts);
+use MSSQL::DBlib::Const::Options qw(DBTEXTSIZE DBTEXTLIMIT);
 use Filehandle;
 use File::Basename qw(dirname);
 
@@ -238,6 +244,8 @@ $sql = sql_init($Srv, $Uid, $Pwd, "tempdb");
 $sql->{'errInfo'}{retStatOK}{4711}++;
 $sql->{'errInfo'}{noWhine}++;
 
+$sql->dbsetopt(MSSQL::DBlib::Const::Options::DBTEXTSIZE,  "2000000000");
+$sql->dbsetopt(MSSQL::DBlib::Const::Options::DBTEXTLIMIT, "2000000000");
 
 create_table;
 create_sp;
@@ -260,8 +268,8 @@ create_sp;
         dimecol       =>   123456.456789,
         bitcol        =>   1,
         tstamp        =>   undef,
-        textcol       =>   "Hello world!" x 10,
-        imagecol      =>   "0x" . "47119600" x 5);
+        textcol       =>   "Hello world!" x 10000,
+        imagecol      =>   "0x" . "47119600" x 10000);
 
 %expectcol =
        (intcol        =>   $tbl{intcol},

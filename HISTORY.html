@@ -7,6 +7,50 @@
 <CENTER>
 <H1>History MSSQL modules</H1>
 </CENTER>
+<H3>000505</H3>
+MSSQL::DBlib 1.006 and MSSQL::Sqllib 1.006 released.
+<H4>News for MSSQL::DBlib</H4>
+<UL>
+    <LI>Compiles and runs with Perl 5.6. Binary for ActivePerl 5.6 available.
+    </LI>
+    <LI>Memory leaks in <A HREF="docs/mssql-dblib.html#dbnextrow2">dbnextrow2</A>
+        and <A HREF="docs/mssql-dblib.html#dbretdata2">dbretdata2</A> fixed.
+        The one in dbnextrow2 was fairly expensive. Big kudos to Ilya
+        Chelpanov for pointing out the leaks and providing the fixes. Note:
+        if you are using old ActiveState Perl 3xx, I'm sorry to tell that the
+        fix does not apply.
+    </LI>
+    <LI>The module now sets the hostname in the DB-Library login record
+        from the environment variable COMPUTERNAME. This happens at initiation
+        time, prior to <A HREF="docs/mssql-dblib.html#dblogin_dbopen">dblogin</A>,
+        so you will see the hostname in sp_who et&nbsp;al.
+    </LI>
+    <LI>New and enchanced functions:
+       <A HREF="docs/mssql-dblib.html#dbstrcpy">dbstrcpy</A>,
+       <A HREF="docs/mssql-dblib.html#dbiscount">dbiscount</A>,
+       <A HREF="docs/mssql-dblib.html#dbgetoff">dbgetoff</A>
+    </LI>
+    <LI><A HREF="docs/mssql-dblib.html#DBSETFALLBACK">DBSETFALLBACK</A> was
+        not calling it's DB-Library namesake, but the completely wrong routine.
+    </LI>
+</UL>
+<H4>News for MSSQL::Sqllib</H4>
+<UL>
+    <LI>Memory leaks fixed (same as in MSSQL::DBlib, see above).
+    </LI>
+    <LI>The <A HREF="docs/mssql-sqllib.html#errInfo">errInfo</A> structure
+        has a new attribute: <A HREF="docs/mssql-sqllib.html#item_errFileHandle">
+        errFileHandle</A>, which permits you to direct error messages to a
+        file. You should assign the attribute an open file handle. The default
+        is STDERR.
+    </LI>
+    <LI>Bugfix: <A HREF="docs/mssql-sqllib.html#sql_sp">sql_sp</A> erroneously
+        truncated in parameters of the datatypes text and image to 255 in
+        length. Note that the SP still truncates there parameters value if
+        the data type is char, varchar, binary or varbinary, since DB-Library
+        don't handle longer values for these datatypes.
+    </LI>
+</UL>
 <H3>990201</H3>
 MSSQL::DBlib 1.005 and MSSQL::Sqllib 1.005 released.
 <H4>General news</H4>
@@ -126,6 +170,6 @@ Initial release for ActiveState Perl only.
 <P>
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 99-01-30 16:31 <!-- $-->
+Last updated <!--$$Modtime:--> 00-05-05 22:44 <!-- $-->
 </I>
 <BODY>

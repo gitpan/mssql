@@ -40,7 +40,8 @@
 			<LI><A HREF="#DBMORECMDS">DBMORECMDS</A>
 			<LI><A HREF="#DBCMDROW">DBCMDROW</A>
 			<LI><A HREF="#DBROWS">DBROWS</A>
-			<LI><A HREF="#DBCOUNT">DBCOUNT</A>
+			<LI><A HREF="#DBCOUNT_dbcount">DBCOUNT, dbcount</A>
+			<LI><A HREF="#dbiscount">dbiscount</A>
 			<LI><A HREF="#DBCURROW">DBCURROW</A>
 			<LI><A HREF="#dbnumcols">dbnumcols</A>
 			<LI><A HREF="#dbcoltype">dbcoltype</A>
@@ -50,6 +51,7 @@
 			<LI><A HREF="#dbsetopt">dbsetopt</A>
 			<LI><A HREF="#dbclropt">dbclropt</A>
 			<LI><A HREF="#dbisopt">dbisopt</A>
+			<LI><A HREF="#dbgetoff">dbgetoff</A>
 			<LI><A HREF="#dbwritetext">dbwritetext</A>
 		</UL>
 
@@ -251,9 +253,20 @@ reference as a <EM>handle</EM>. The user-accessible attributes are described in 
 <P>
 
 You can also set user, password and application name in advance with the
-<A HREF="#DBSETLUSER">DBSETLUSER</A>, <A HREF="#DBSETLPWD">DBSETLPWD</A> and <A HREF="#DBSETLAPP">DBSETLAPP</A> calls and leave these out when calling <A HREF="#dblogin">dblogin</A> or <A HREF="#dbopen">dbopen</A>. If you don't provide a server name, DB-Library will apply its defaults.
-To use integrated security, call 
-<A HREF="#DBSETLSECURE">DBSETLSECURE</A> before calling <A HREF="#dblogin">dblogin</A> or <A HREF="#dbopen">dbopen</A>.
+<A HREF="#DBSETLUSER">DBSETLUSER</A>, <A HREF="#DBSETLPWD">DBSETLPWD</A> and <A HREF="#DBSETLAPP">DBSETLAPP</A> calls and leave these out when calling <A HREF="#dblogin">dblogin</A> or <A HREF="#dbopen">dbopen</A>. You cannot specify a host name with
+<A HREF="#dblogin">dblogin</A>, however you can set it with <A HREF="#DBSETLHOST">DBSETLHOST</A> prior to calling
+<A HREF="#dblogin">dblogin</A>. By default, MSSQL::DBlib sets the hostname to value of the environment
+variable COMPUTERNAME.
+
+
+<P>
+
+If you don't provide a server name,DB-Library will apply its defaults. 
+
+
+<P>
+
+To use <STRONG>Windows NT authentication</STRONG> (known as ``Integrated Security'' in SQL 6.5), call <A HREF="#DBSETLSECURE">DBSETLSECURE</A> before calling <A HREF="#dblogin">dblogin</A> or <A HREF="#dbopen">dbopen</A>. In this case SQL Server will ignore <CODE>$user</CODE> and $pwd.
 
 
 <P>
@@ -789,10 +802,11 @@ Returns SUCCEED if the current command did return rows.
 
 <P>
 <HR>
-<H3><A NAME="DBCOUNT">DBCOUNT
+<H3><A NAME="DBCOUNT_dbcount">DBCOUNT, dbcount
 
 </A></H3>
 <PRE>    $count = $dbh-&gt;DBCOUNT
+    $count = $dbh-&gt;dbcount
 </PRE>
 
 <P>
@@ -800,6 +814,27 @@ Returns SUCCEED if the current command did return rows.
 Returns the number of rows that the current command affected. Notice that
 for a SELECT statement you will not get a correct answer from
 <A HREF="#DBCOUNT">DBCOUNT</A> until you have retrieved all rows with <A HREF="#dbnextrow2">dbnextrow2</A>.
+
+
+<P>
+
+You can check with <A HREF="#dbiscount">dbiscount</A> whether the value you get is ``real''. (Yeah this is what the DB-Library
+documentation says.)
+
+
+<P>
+
+<P>
+<HR>
+<H3><A NAME="dbiscount">dbiscount
+
+</A></H3>
+<PRE>    $isreal = $dbh-&gt;dbiscount
+</PRE>
+
+<P>
+
+Returns whether the number by <A HREF="#DBCOUNT_dbcount">DBCOUNT, dbcount</A> is ``real'' or not.
 
 
 <P>
@@ -888,12 +923,16 @@ Returns the name of column <CODE>$colid</CODE> in the current result set.
 <H3><A NAME="dbstrcpy">dbstrcpy
 
 </A></H3>
-<PRE>   $string = $dbh-&gt;dbstrcpy
+<PRE>   $string = $dbh-&gt;dbstrcpy [($start [, $numbytes])]
 </PRE>
 
 <P>
 
-Returns the contents of the command buffer.
+Returns the contents of the command buffer. <CODE>$start</CODE> is the
+position to start copying from. Default is 0, the first character in the
+buffer. When negative, <CODE>$numbytes</CODE> asks for the entire buffer to
+be returned. When &gt;= 0, at most <CODE>$numbytes</CODE> characters are
+returned. Default is -1, return everything.
 
 
 <P>
@@ -958,6 +997,39 @@ been set with <A HREF="#dbsetopt">dbsetopt</A>.
 <P>
 
 Returns a true value if the option <CODE>$opt</CODE> is set.
+
+
+<P>
+
+<P>
+<HR>
+<H3><A NAME="dbgetoff">dbgetoff
+
+</A></H3>
+<PRE>   $offset = $dbh-&gt;dbgetoff($offtype, $startfrom)
+</PRE>
+
+<P>
+
+<A HREF="#dbgetoff">dbgetoff</A> returns offsets to T-SQL statements in the command buffer.
+<CODE>$offtype</CODE> is a constant telling what you want offsets to. These
+constants are defined in MSSQL::DBlib::Const::Offset.
+<CODE>$startfrom</CODE> is where to start searching in the command buffer.
+Typically you would set <CODE>$startfrom</CODE> to the last returned
+<CODE>$offset</CODE> + 1 for the next search. 
+
+
+<P>
+
+To get offset information, you need to set the option DBOFFSET, please
+refer to Books Online for this.
+
+
+<P>
+
+Note: I've played with this function both in SQL 6.5 and SQL 7 to get
+offsets to T-SQL statements and I didn't the results I got were neither
+useful nor consistent. Use at your own risk.
 
 
 <P>

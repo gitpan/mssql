@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/MSSQL/sqllib/sqllib.pm 2     99-01-30 16:36 Sommar $
+# $Header: /Perl/MSSQL/Sqllib/sqllib.pm 4     00-05-03 21:36 Sommar $
 # Copyright (c) 1997-1999 Erland Sommarskog
 #
 #   I don't care under which license you use this, as long as you don't
@@ -7,6 +7,16 @@
 #
 # $History: sqllib.pm $
 # 
+# *****************  Version 4  *****************
+# User: Sommar       Date: 00-05-03   Time: 21:36
+# Updated in $/Perl/MSSQL/Sqllib
+# Bugfix: text and image values were truncated to be 255 long.
+#
+# *****************  Version 3  *****************
+# User: Sommar       Date: 00-02-19   Time: 20:45
+# Updated in $/Perl/MSSQL/Sqllib
+# Added errFileHandle to errInfo.
+#
 # *****************  Version 2  *****************
 # User: Sommar       Date: 99-01-30   Time: 16:36
 # Updated in $/Perl/MSSQL/sqllib
@@ -24,7 +34,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS
             %VARLENTYPES %STRINGTYPES %LARGETYPES %QUOTEDTYPES %BINARYTYPES
             $VERSION);
 
-$VERSION = "1.005";
+$VERSION = "1.006";
 
 use MSSQL::DBlib;
 use MSSQL::DBlib::Const::General;
@@ -552,7 +562,7 @@ SQLEND
                 $value = " ";
              }
              $datalen = ($isnull ? 0 : length($value));
-             $datalen = 255 if $datalen > 255;
+             $datalen = 255 if $datalen > 255 and not $LARGETYPES{$type};
           }
           else {
              $datalen = ($isnull ? 0 : -1);
@@ -719,11 +729,14 @@ sub sql_message_handler {
     my($db, $errno, $state, $severity, $text, $server,
        $procedure, $line) = @_;
 
-    my($errInfo, $print_msg, $print_text, $print_lines);
+    my($errInfo, $print_msg, $print_text, $print_lines, $fh);
 
     # First get a reference to an errInfo hash. If $db is not a proper
     # object (this happen during sql_init), use the global errInfo hash.
     $errInfo = (exists $db->{errInfo} ? $db->{errInfo} : $globalErrInfo);
+
+    # Determine where to write the messages.
+    $fh = ($errInfo->{errFileHandle} or \*STDERR);
 
     # Save messages if requested.
     if ($errInfo->{saveMessages}) {
@@ -763,21 +776,21 @@ sub sql_message_handler {
 
        # Here goes printing for each part. First message info.
        if ($print_msg) {
-          print STDERR "SQL Server message $errno, Severity $severity, ",
-                       "State $state";
-          print STDERR ", Server $server" if $server;
+          print $fh "SQL Server message $errno, Severity $severity, ",
+                    "State $state";
+          print $fh ", Server $server" if $server;
           if ($procedure) {
-             print STDERR "\nProcedure $procedure  Line $line";
+             print $fh "\nProcedure $procedure  Line $line";
           }
           else {
-             print STDERR "\nLine $line" if $line;
+             print $fh "\nLine $line" if $line;
           }
-          print STDERR "\n";
+          print $fh "\n";
        }
 
        # The text.
        if ($print_text) {
-          print STDERR "$text\n" if $text;
+          print $fh "$text\n" if $text;
        }
 
        # The lines. This is slightly more tricky.
@@ -787,12 +800,12 @@ sub sql_message_handler {
              if ($linetxt) {
                 my ($lineno, $row);
                 foreach $row (split (/\n/, $linetxt)) {
-                   print STDERR sprintf("%5d", ++$lineno), "> $row\n";
+                   print $fh sprintf("%5d", ++$lineno), "> $row\n";
                 }
              }
           }
           else {
-             print STDERR sprintf("%5d> ", 1) . $errInfo->{SP_call} . "\n";
+             print $fh sprintf("%5d> ", 1) . $errInfo->{SP_call} . "\n";
           }
        }
     }
@@ -808,10 +821,13 @@ sub sql_error_handler {
     # object (this happen during sql_init), use the global errInfo hash.
     my $errInfo = (exists $db->{errInfo} ? $db->{errInfo} : $globalErrInfo);
 
+    # Determine where to write the messages.
+    my $fh = ($errInfo->{errFileHandle} or \*STDERR);
+
     # Print unless silence is called.
     unless ($errInfo->{neverPrint}{-$dberr}) {
-       print STDERR "DB-Library error $dberr, severity $severity: $dberr_text\n";
-       print STDERR "OS error $os_error: $os_error_text\n" if $os_error != DBNOERR;
+       print $fh "DB-Library error $dberr, severity $severity: $dberr_text\n";
+       print $fh "OS error $os_error: $os_error_text\n" if $os_error != DBNOERR;
     }
 
     # Save message if requested.

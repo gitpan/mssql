@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/MSSQL/DBlib/DBlib.xs 3     99-01-30 17:05 Sommar $
+ $Header: /Perl/MSSQL/DBlib/DBlib.xs 6     00-05-01 22:45 Sommar $
 
   Copyright (c) 1991-1995    Michael Peppler, original Sybperl
   Copyright (c) 1996         Christian Mallwitz, NT port of Sybperl
@@ -11,6 +11,23 @@
 
   $History: DBlib.xs $
  * 
+ * *****************  Version 6  *****************
+ * User: Sommar       Date: 00-05-01   Time: 22:45
+ * Updated in $/Perl/MSSQL/DBlib
+ * Sets HOSTNAME in login record.Fixed memory leaks (thanks Ilya!).
+ * Enhanced dbstrcpy. Added dbgetoff. Corrected DBSETLFALLBACK.
+ * 
+ * *****************  Version 5  *****************
+ * User: Sommar       Date: 00-02-19   Time: 20:46
+ * Updated in $/Perl/MSSQL/DBlib
+ * Changes to permit compilation in Perl 5.6 with USE_MULTI and
+ * USE_IMP_SYS. Added dbcount and dbiscount.
+ * 
+ * *****************  Version 4  *****************
+ * User: Sommar       Date: 99-02-25   Time: 22:25
+ * Updated in $/Perl/MSSQL/DBlib
+ * Removed extraneous parameter declarations for bcp_colfmt.
+ *
  * *****************  Version 3  *****************
  * User: Sommar       Date: 99-01-30   Time: 17:05
  * Updated in $/Perl/MSSQL/DBlib
@@ -46,6 +63,13 @@
 #define PL_dowarn dowarn
 #define PL_sv_undef sv_undef
 #define PL_na na
+
+// getenv points to win32_getenv which gave me linking problems.
+#undef getenv
+
+// Mimicking PerlIO for 5.005 and eariler
+#define PerlIO_printf fprintf
+#define PerlIO_stderr() stderr
 #endif
 
 #else
@@ -85,7 +109,7 @@ extern "C" {
 
 
 
-#define XS_VERSION "1.005"
+#define XS_VERSION "1.006"
 
 #define BOOL     int
 
@@ -318,15 +342,16 @@ static int err_handler (DBPROCESS  *db,
 
     if ((db == NULL) || (DBDEAD(db))) {
         if (dberrstr) {
-            fprintf(stderr,"DB-Library error %d:\n\t%s\n", dberr, dberrstr);
+            PerlIO_printf(PerlIO_stderr(), "DB-Library error %d:\n\t%s\n", 
+                           dberr, dberrstr);
         }
         return(INT_EXIT);
     }
     else {
-        fprintf(stderr,"DB-Library error: %d\n\t%s\n", dberr, dberrstr);
+        PerlIO_printf(PerlIO_stderr(), "DB-Library error: %d\n\t%s\n", dberr, dberrstr);
 
         if (oserr != DBNOERR)
-            fprintf(stderr,"Operating-system error:\n\t%s\n", oserrstr);
+            PerlIO_printf(PerlIO_stderr(), "Operating-system error:\n\t%s\n", oserrstr);
 
         return(INT_CANCEL);
     }
@@ -420,16 +445,16 @@ static int msg_handler (DBPROCESS   *db,
     if (!severity)
         return 0;
 
-    fprintf (stderr,"Msg %ld, Level %d, State %d\n",
+    PerlIO_printf(PerlIO_stderr(),"Msg %ld, Level %d, State %d\n",
              msgno, severity, msgstate);
     if (srvname != NULL && (int)strlen(srvname) > 0)
-        fprintf (stderr,"Server '%s', ", srvname);
+        PerlIO_printf(PerlIO_stderr(), "Server '%s', ", srvname);
     if (procname != NULL && (int)strlen(procname) > 0)
-        fprintf (stderr,"Procedure '%s', ", procname);
+        PerlIO_printf(PerlIO_stderr(), "Procedure '%s', ", procname);
     if (line > 0)
-        fprintf (stderr,"Line %d", line);
+        PerlIO_printf(PerlIO_stderr(), "Line %d", line);
 
-    fprintf(stderr,"\n\t%s\n", msgtext);
+    PerlIO_printf(PerlIO_stderr(), "\n\t%s\n", msgtext);
 
     return(0);
 }
@@ -674,6 +699,7 @@ static void initialize (CPERLarg)
         login = dblogin();
         DBSETLUSER(login, NULL);
         DBSETLPWD(login, NULL);
+        DBSETLHOST(login, getenv("COMPUTERNAME"));
 
         if (sv = perl_get_sv("0", FALSE))
         {
@@ -1084,8 +1110,29 @@ DBCOUNT(dbp)
 CODE:
 {
     DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);
-
     RETVAL = DBCOUNT(dbproc);
+}
+ OUTPUT:
+RETVAL
+
+int
+dbcount(dbp)
+        SV *    dbp
+CODE:
+{
+    DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);
+    RETVAL = dbcount(dbproc);
+}
+ OUTPUT:
+RETVAL
+
+int
+dbiscount(dbp)
+        SV *    dbp
+CODE:
+{
+    DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);
+    RETVAL = dbiscount(dbproc);
 }
  OUTPUT:
 RETVAL
@@ -1096,7 +1143,6 @@ dbnumcols(dbp)
 CODE:
 {
     DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);
-
     RETVAL = dbnumcols(dbproc);
 }
  OUTPUT:
@@ -1109,7 +1155,6 @@ dbcoltype(dbp, colid)
 CODE:
 {
     DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);
-
     RETVAL = dbcoltype(dbproc, colid);
 }
  OUTPUT:
@@ -1186,12 +1231,12 @@ CODE:
     }
     else if (doAssoc) {
        rethash = newHV();
-       sv_setsv(outref, newRV_noinc((SV*) rethash));
+       sv_setsv(outref, sv_2mortal(newRV_noinc((SV*) rethash)));
     }
     else {
        retlist = newAV();
        av_extend(retlist, numcols);
-       sv_setsv(outref, newRV_noinc((SV*) retlist));
+       sv_setsv(outref, sv_2mortal(newRV_noinc((SV*) retlist)));
     }
 
 
@@ -1272,12 +1317,12 @@ CODE:
     // Set up structure for storing the result.
     if (doAssoc) {
        rethash = newHV();
-       RETVAL = newRV((SV*) rethash);
+       RETVAL = newRV_noinc((SV*) rethash);
     }
     else {
        retlist = newAV();
        av_extend(retlist, numpars - 1);
-       RETVAL = newRV((SV*) retlist);
+       RETVAL = newRV_noinc((SV*) retlist);
     }
 
 
@@ -1306,8 +1351,10 @@ OUTPUT:
    RETVAL
 
 void
-dbstrcpy(dbp)
+dbstrcpy(dbp, start = 0, numbytes = -1 )
         SV *    dbp
+        int     start;
+        int     numbytes;
 CODE:
 {
     DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);
@@ -1319,7 +1366,7 @@ CODE:
     if(dbproc && (len = dbstrlen(dbproc)))
     {
         New(902, buff, len+1, char);
-        retval = dbstrcpy(dbproc, 0, -1, buff);
+        retval = dbstrcpy(dbproc, start, numbytes, buff);
         sv_setpv(ST(0), buff);
         Safefree(buff);
     }
@@ -1336,6 +1383,19 @@ CODE:
     RETVAL = (char *) dbprtype(token);
 }
  OUTPUT:
+RETVAL
+
+int
+dbgetoff(dbp, offtype, startfrom)
+      SV *            dbp
+      unsigned short offtype
+      int            startfrom
+CODE:
+{
+    DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);
+    RETVAL = dbgetoff (dbproc, offtype, startfrom);
+}
+  OUTPUT:
 RETVAL
 
 
@@ -1514,7 +1574,7 @@ DBSETLFALLBACK(onoff)
     char * onoff
   CODE:
 {
-    RETVAL = DBSETLHOST(login, onoff);
+    RETVAL = DBSETLFALLBACK(login, onoff);
 }
  OUTPUT:
 RETVAL
@@ -1978,8 +2038,6 @@ bcp_colfmt(dbp, host_col, host_type, host_prefixlen, host_collen, host_term, hos
         char *  host_term
         int     host_termlen
         int     table_col
-        int     precision
-        int     scale
   CODE:
 {
     DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);

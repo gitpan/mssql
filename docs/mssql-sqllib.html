@@ -363,8 +363,8 @@ for <EM>sa</EM>, the database will be <EM>tempdb</EM> to avoid a disaster, were 
 
 <P>
 
-To use integrated security, call the MSSQL::DBlib routine <A HREF="#DBSETLSECURE">DBSETLSECURE</A>
-before calling <A HREF="#sql_init">sql_init</A>.
+To use <STRONG>Windows NT authentication</STRONG> (known as ``integrated security'' MS SQL 6.5), call the MSSQL::DBlib
+routine <A HREF="././mssql-dblib.html#DBSETLSECURE">DBSETLSECURE</A> prior to calling <A HREF="#sql_init">sql_init</A>.
 
 
 <P>
@@ -1551,7 +1551,13 @@ and hashes themselves. A pseudo-code declaration with default values of <A HREF=
 <P>
 
 <PRE>      RECORD errInfo 
-          -- Abort control for sql_message_handler and sql_error_handler
+          -- Where to write error messages
+          errFileHandle  IO::File = STDERR;
+</PRE>
+
+<P>
+
+<PRE>          -- Abort control for sql_message_handler and sql_error_handler
           dieFlag        flag;
           maxSeverity    integer = 10;
           maxLibSeverity integer = 1;
@@ -1616,6 +1622,16 @@ Notice that you cannot use <A HREF="#errInfo">errInfo</A> to control the behavio
 <P>
 
 <DL>
+<DT><STRONG><A NAME="item_errFileHandle">errFileHandle
+
+</A></STRONG><DD>
+Where <A HREF="#sql_message_handler">sql_message_handler</A> and <A HREF="#sql_error_handler">sql_error_handler</A> are to write their messages. Initially <CODE>undef</CODE>, which will cause the handlers to write to STDERR. Set <A HREF="#item_errFileHandle">errFileHandle</A> to a filehandle open for write to override this. 
+<A HREF="#item_errFileHandle">errFileHandle</A> is useful, when you want to save SQL errors to a file, but still want to
+see unexpected Perl warnings directly in the command window. 
+
+
+<P>
+
 <DT><STRONG><A NAME="item_dieFlag">dieFlag
 
 </A></STRONG><DD>
@@ -1660,7 +1676,7 @@ below. Default: <STRONG>1</STRONG> (= EXINFO).
 <P>
 
 Constants for DB-Library severities are defined in
-MSSQL::DBlib::Consts::Severity.
+MSSQL::DBlib::Const::Severity.
 
 
 <P>
@@ -1676,8 +1692,8 @@ if <A HREF="#item_neverStopOn">neverStopOn</A>{-$dberr} is set,
 
 <P>
 
-Constants for DB-Library errors are defined in
-MSSQL::DBlib::Consts::Errors. If follows from the above that you must say:
+Constants for DB-Library errors are defined in MSSQL::DBlib::Const::Errors.
+If follows from the above that you must say:
 
 
 <P>
