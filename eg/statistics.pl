@@ -1,8 +1,13 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/MSSQL/eg/statistics.pl 2     99-01-30 16:47 Sommar $
+# $Header: /Perl/MSSQL/eg/statistics.pl 3     01-05-03 22:12 Sommar $
 #
 # $History: statistics.pl $
 # 
+# *****************  Version 3  *****************
+# User: Sommar       Date: 01-05-03   Time: 22:12
+# Updated in $/Perl/MSSQL/eg
+# Added dbsqlexec and dbresults are setting options.
+#
 # *****************  Version 2  *****************
 # User: Sommar       Date: 99-01-30   Time: 16:47
 # Updated in $/Perl/MSSQL/eg
@@ -49,6 +54,8 @@
 
     $dbh->dbsetopt(DBSTAT, "IO");
     $dbh->dbsetopt(DBSTAT, "TIME");
+    $dbh->dbsqlexec;
+    while ($dbh->dbresults != NO_MORE_RESULTS) {}
 
     $dbh->dbcmd("SELECT * FROM sysdatabases WHERE dbid = 1");
     $dbh->dbsqlexec;

@@ -1,7 +1,7 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/MSSQL/DBlib/DBlib.pm 3     00-04-24 23:06 Sommar $
+# $Header: /Perl/MSSQL/DBlib/DBlib.pm 4     01-05-01 22:38 Sommar $
 # Copyright (c) 1991-1995 Michael Peppler
-# Copyright (c) 1997-1999 Erland Sommarskog
+# Copyright (c) 1997-2001 Erland Sommarskog
 #
 #   You may copy this under the terms of the GNU General Public License,
 #   or the Artistic License, copies of which should have accompanied
@@ -9,6 +9,11 @@
 #
 # $History: DBlib.pm $
 # 
+# *****************  Version 4  *****************
+# User: Sommar       Date: 01-05-01   Time: 22:38
+# Updated in $/Perl/MSSQL/DBlib
+# MSSQL::DBlib 1.008
+#
 # *****************  Version 3  *****************
 # User: Sommar       Date: 00-04-24   Time: 23:06
 # Updated in $/Perl/MSSQL/DBlib
@@ -33,7 +38,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK $VERSION $Version);
 use Exporter;
 require DynaLoader;   # C<use> gives warning with AS Perl.
 
-$VERSION = '1.006';
+$VERSION = '1.008';
 
 @ISA = qw(Exporter  DynaLoader);
 

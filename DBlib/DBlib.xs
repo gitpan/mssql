@@ -1,9 +1,9 @@
 /*---------------------------------------------------------------------
- $Header: /Perl/MSSQL/DBlib/DBlib.xs 6     00-05-01 22:45 Sommar $
+ $Header: /Perl/MSSQL/DBlib/DBlib.xs 7     01-05-01 22:39 Sommar $
 
   Copyright (c) 1991-1995    Michael Peppler, original Sybperl
   Copyright (c) 1996         Christian Mallwitz, NT port of Sybperl
-  Copyright (c) 1997-1999    Erland Sommarskog, MSSQL::DBlib from NT-Sybperl.
+  Copyright (c) 1997-2001    Erland Sommarskog, MSSQL::DBlib from NT-Sybperl.
 
   You may copy this under the terms of the GNU General Public License,
   or the Artistic License, copies of which should have accompanied
@@ -11,18 +11,24 @@
 
   $History: DBlib.xs $
  * 
+ * *****************  Version 7  *****************
+ * User: Sommar       Date: 01-05-01   Time: 22:39
+ * Updated in $/Perl/MSSQL/DBlib
+ * Added dbreadtext, dbmoretext, dbupdatetext, dbcopytext and dbdeletetext
+ * for MSSQL::DBlib 1.008.
+ *
  * *****************  Version 6  *****************
  * User: Sommar       Date: 00-05-01   Time: 22:45
  * Updated in $/Perl/MSSQL/DBlib
  * Sets HOSTNAME in login record.Fixed memory leaks (thanks Ilya!).
  * Enhanced dbstrcpy. Added dbgetoff. Corrected DBSETLFALLBACK.
- * 
+ *
  * *****************  Version 5  *****************
  * User: Sommar       Date: 00-02-19   Time: 20:46
  * Updated in $/Perl/MSSQL/DBlib
  * Changes to permit compilation in Perl 5.6 with USE_MULTI and
  * USE_IMP_SYS. Added dbcount and dbiscount.
- * 
+ *
  * *****************  Version 4  *****************
  * User: Sommar       Date: 99-02-25   Time: 22:25
  * Updated in $/Perl/MSSQL/DBlib
@@ -109,7 +115,7 @@ extern "C" {
 
 
 
-#define XS_VERSION "1.006"
+#define XS_VERSION "1.008"
 
 #define BOOL     int
 
@@ -342,7 +348,7 @@ static int err_handler (DBPROCESS  *db,
 
     if ((db == NULL) || (DBDEAD(db))) {
         if (dberrstr) {
-            PerlIO_printf(PerlIO_stderr(), "DB-Library error %d:\n\t%s\n", 
+            PerlIO_printf(PerlIO_stderr(), "DB-Library error %d:\n\t%s\n",
                            dberr, dberrstr);
         }
         return(INT_EXIT);
@@ -725,7 +731,7 @@ static void initialize (CPERLarg)
         if ((sv = perl_get_sv("MSSQL::DBlib::Version", TRUE)))
         {
             char buff[256];
-            sprintf(buff, "This is MSSQL::DBlib, version %s\n\nCopyright (c) 1991-1995 Michael Peppler\nCopyright (c) 1996 Christian Mallwitz, Intershop GmbH\nCopyright (c) 1997-1999 Erland Sommarskog\n",
+            sprintf(buff, "This is MSSQL::DBlib, version %s\n\nCopyright (c) 1991-1995 Michael Peppler\nCopyright (c) 1996 Christian Mallwitz, Intershop GmbH\nCopyright (c) 1997-2001 Erland Sommarskog\n",
                     XS_VERSION);
             sv_setnv(sv, atof(XS_VERSION));
             sv_setpv(sv, buff);
@@ -1461,6 +1467,179 @@ dbwritetext(dbp, colname, dbp2, colnum, text, log=0)
                          len, (BYTE *)ptr);
 }
  OUTPUT:
+RETVAL
+
+int
+dbpreptext(dbp, colname, dbp2, colnum, size, log=0)
+   SV *  dbp
+   char *   colname
+   SV *  dbp2
+   int   colnum
+   int   size
+   int   log
+  CODE:
+{
+    DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);
+    DBPROCESS *dbproc2 = getDBPROC(PERL_OBJECT_THIS_ dbp2);
+
+    RETVAL = dbwritetext(dbproc, colname, dbtxptr(dbproc2, colnum),
+          DBTXPLEN, dbtxtimestamp(dbproc2, colnum), (BOOL)log,
+          size, NULL);
+}
+ OUTPUT:
+RETVAL
+
+int
+dbupdatetext(dbp, colname, dbp2, colnum, text, insert_offset=-1, delete_length=0, log=0)
+        SV *    dbp
+        char *  colname
+        SV *    dbp2
+        int     colnum
+        SV *    text
+        int     insert_offset
+        int     delete_length
+        int     log
+  CODE:
+{
+    DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);
+    DBPROCESS *dbproc2 = getDBPROC(PERL_OBJECT_THIS_ dbp2);
+    char *ptr;
+    STRLEN len;
+
+    ptr = SvPV(text, len);
+
+    RETVAL = dbupdatetext(dbproc, colname, dbtxptr(dbproc2, colnum),
+                          dbtxtimestamp(dbproc2, colnum),
+                          UT_TEXT | (log ? UT_LOG : 0),
+                          insert_offset, delete_length,
+                          NULL, len, (BYTE *)ptr);
+}
+ OUTPUT:
+RETVAL
+
+int
+dbprepupdatetext(dbp, colname, dbp2, colnum, size, insert_offset=-1, delete_length=0, log=0)
+        SV *    dbp
+        char *  colname
+        SV *    dbp2
+        int     colnum
+        int     size
+        int     insert_offset
+        int     delete_length
+        int     log
+  CODE:
+{
+    DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);
+    DBPROCESS *dbproc2 = getDBPROC(PERL_OBJECT_THIS_ dbp2);
+
+    RETVAL = dbupdatetext(dbproc, colname, dbtxptr(dbproc2, colnum),
+                          dbtxtimestamp(dbproc2, colnum),
+                          UT_MORETEXT | (log ? UT_LOG : 0),
+                          insert_offset, delete_length,
+                          NULL, size, NULL);
+}
+ OUTPUT:
+RETVAL
+
+int
+dbdeletetext(dbp, colname, dbp2, colnum, insert_offset, delete_length, log=0)
+        SV *    dbp
+        char *  colname
+        SV *    dbp2
+        int     colnum
+        int     insert_offset
+        int     delete_length
+        int     log
+  CODE:
+{
+    DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);
+    DBPROCESS *dbproc2 = getDBPROC(PERL_OBJECT_THIS_ dbp2);
+
+    RETVAL = dbupdatetext(dbproc, colname, dbtxptr(dbproc2, colnum),
+                          dbtxtimestamp(dbproc2, colnum),
+                          UT_DELETEONLY |  (log ? UT_LOG : 0),
+                          insert_offset, delete_length,
+                          NULL, 0, NULL);
+}
+ OUTPUT:
+RETVAL
+
+int
+dbcopytext(dbp, colnamedest, colnamesrc, dbpdest, colnumdest, dbpsrc, colnumsrc, insert_offset=-1, delete_length=0, log=0)
+        SV *    dbp
+        char *  colnamedest
+        char *  colnamesrc
+        SV *    dbpdest
+        int     colnumdest
+        SV *    dbpsrc
+        int     colnumsrc
+        int     insert_offset
+        int     delete_length
+        int     log
+  CODE:
+{
+    DBPROCESS *dbproc     = getDBPROC(PERL_OBJECT_THIS_ dbp);
+    DBPROCESS *dbprocdest = getDBPROC(PERL_OBJECT_THIS_ dbpdest);
+    DBPROCESS *dbprocsrc  = getDBPROC(PERL_OBJECT_THIS_ dbpsrc);
+
+    RETVAL = dbupdatetext(dbproc, colnamedest,
+             dbtxptr(dbprocdest, colnumdest), dbtxtimestamp(dbprocdest, colnumdest),
+             UT_TEXTPTR | (log ? UT_LOG : 0),
+             insert_offset, delete_length,
+             colnamesrc, 0, dbtxptr(dbprocsrc, colnumsrc));
+}
+ OUTPUT:
+RETVAL
+
+
+int
+dbreadtext(dbp, outpar, size)
+   SV *  dbp
+   SV *  outpar
+   int   size
+CODE:
+{
+    char * buff;
+    int bytes;
+    DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);
+
+    New(902, buff, size + 1, char);
+    bytes = dbreadtext(dbproc, buff, size);
+    RETVAL = bytes;
+    if (bytes >= 0) {
+       buff[(bytes <= size ? bytes : size)] = '\0';
+       sv_setpv(outpar, buff);
+    }
+    else {
+       sv_setsv(outpar, &PL_sv_undef);
+    }
+    Safefree(buff);
+}
+OUTPUT:
+RETVAL
+outpar
+
+int
+dbmoretext(dbp, size, buff)
+   SV *  dbp
+   SV *  size
+   SV *  buff
+CODE:
+{
+    char *ptr;
+    STRLEN len;
+
+    ptr = SvPV(buff, len);
+
+    if (size != &PL_sv_undef) {
+       len = SvIV(size);
+    }
+
+    DBPROCESS *dbproc = getDBPROC(PERL_OBJECT_THIS_ dbp);
+
+    RETVAL = dbmoretext(dbproc, len, (BYTE *) ptr);
+}
+OUTPUT:
 RETVAL
 
 

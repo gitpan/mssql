@@ -52,7 +52,6 @@
 			<LI><A HREF="#dbclropt">dbclropt</A>
 			<LI><A HREF="#dbisopt">dbisopt</A>
 			<LI><A HREF="#dbgetoff">dbgetoff</A>
-			<LI><A HREF="#dbwritetext">dbwritetext</A>
 		</UL>
 
 		<LI><A HREF="#Exported_Routines">Exported Routines</A>
@@ -105,6 +104,19 @@
 			<LI><A HREF="#dbretdata2">dbretdata2</A>
 			<LI><A HREF="#dbretstatus">dbretstatus</A>
 			<LI><A HREF="#dbhasretstat">dbhasretstat</A>
+		</UL>
+
+		<LI><A HREF="#Text_image_functions">Text/image functions</A>
+		<UL>
+
+			<LI><A HREF="#dbreadtext">dbreadtext</A>
+			<LI><A HREF="#dbwritetext">dbwritetext</A>
+			<LI><A HREF="#dbpreptext">dbpreptext</A>
+			<LI><A HREF="#dbmoretext">dbmoretext</A>
+			<LI><A HREF="#dbupdatetext">dbupdatetext</A>
+			<LI><A HREF="#dbprepupdatetext">dbprepupdatetext</A>
+			<LI><A HREF="#dbdeletetext">dbdeletetext</A>
+			<LI><A HREF="#dbcopytext">dbcopytext</A>
 		</UL>
 
 		<LI><A HREF="#Two_Phase_Commit_Routines">Two-Phase Commit Routines</A>
@@ -180,6 +192,7 @@ A simple Perl script using MSSQL::DBlib could look like this:
 <P>
 
 <PRE>    use MSSQL::DBlib;
+    use MSSQL::DBlib::Const::General;
 </PRE>
 
 <P>
@@ -271,7 +284,7 @@ However, I have yet to fail to connect to a named instance.
 
 <P>
 
-To use <STRONG>Windows NT authentication</STRONG> (known as ``Integrated Security'' in SQL 6.5), call <A HREF="#DBSETLSECURE">DBSETLSECURE</A> before calling <A HREF="#dblogin">dblogin</A> or <A HREF="#dbopen">dbopen</A>. In this case SQL Server will ignore <CODE>$user</CODE> and $pwd.
+To use <STRONG>Windows NT authentication</STRONG> (known as ``Integrated Security'' in SQL 6.5), call <A HREF="#DBSETLSECURE">DBSETLSECURE</A> before calling <A HREF="#dblogin">dblogin</A> or <A HREF="#dbopen">dbopen</A>. In this case SQL Server will ignore <CODE>$user</CODE> and <CODE>$pwd</CODE>.
 
 
 <P>
@@ -476,7 +489,7 @@ Makes the next result set of the query the current result set, from which
 <P>
 
 <STRONG>FAIL</STRONG>: something went wrong. Note that you must continue to call <A HREF="././mssql-dblib.html#item_dbresults">dbresults</A>
-until it calls NO_MORE_RESULTS, or cancel the batch with <A HREF="#dbcancel">dbcancel</A>.
+until it returns NO_MORE_RESULTS, or cancel the batch with <A HREF="#dbcancel">dbcancel</A>.
 
 
 <P>
@@ -517,12 +530,12 @@ receive the data into a hash.
 <P>
 
 When <CODE>$wantref</CODE> has a true value, a reference to an array or a
-hash is returned, depending on $use_hash.
+hash is returned, depending on <CODE>$use_hash</CODE>.
 
 
 <P>
 
-The return status from the DB-Library function <EM>dbnextrow</EM> is available in $dbh-&gt;{DBstatus}.
+The return status from the DB-Library function <EM>dbnextrow</EM> is available in <CODE>$dbh-&gt;{DBstatus}</CODE>.
 
 
 <P>
@@ -544,9 +557,8 @@ implemented on top of <A HREF="#dbnextrow2">dbnextrow2</A>, which is the preferr
 <P>
 
 Get the next row from the current result set and return the status from the
-DB-Library function <EM>dbnextrow</EM>. On a successful fetch, the data in the row is available in $dataref. When
-a fetch fails (see possible status values below), <CODE>$dataref</CODE>
-will be <CODE>undef</CODE>.
+DB-Library function <EM>dbnextrow</EM>. On a successful fetch, the data in the row is available in <CODE>$dataref</CODE>. When a fetch fails (see possible status values below),
+<CODE>$dataref</CODE> will be <CODE>undef</CODE>.
 
 
 <P>
@@ -619,7 +631,7 @@ An example with <A HREF="#dbnextrow2">dbnextrow2</A> returning a hash:
 
 <P>
 
-<PRE>   while ($dbh-&gt;dbnextrow($dataref, 1) == NO_MORE_ROWS) {
+<PRE>   while ($dbh-&gt;dbnextrow($dataref, 1) != NO_MORE_ROWS) {
       print &quot;$$dataref{Name} : $$dataref{Id}\n&quot;;
    }
 </PRE>
@@ -953,8 +965,7 @@ returned. Default is -1, return everything.
 
 <P>
 
-Sets option <CODE>$opt</CODE> with optional character parameter $char_val.
-<CODE>$opt</CODE> is one of the option values defined in the DB-Library
+Sets option <CODE>$opt</CODE> with optional character parameter <CODE>$char_val</CODE>. <CODE>$opt</CODE> is one of the option values defined in the DB-Library
 manual (e.g. DBSTAT, DBTEXTSIZE). To get IO statistics from the server on,
 you would say:
 
@@ -962,7 +973,37 @@ you would say:
 <P>
 
 <PRE>    $dbh-&gt;dbsetopt(DBSTAT, &quot;io&quot;);
+    $dbh-&gt;dbsqlexec;
+    while ($dbh-&gt;dbresults != NO_MORE_RESULTS) {}
 </PRE>
+
+<P>
+
+There are two kinds of options: SQL Server options (that have corresponding
+SET commands) and DB-Library options (that have no corresponding T-SQL
+commands at all.)
+
+
+<P>
+
+For the SQL Server options <A HREF="#dbsetopt">dbsetopt</A> does not itself send the SET command to SQL Server, you must use <A HREF="#dbsqlexec">dbsqlexec</A> and <A HREF="#dbresults">dbresults</A> just like after sending a command before the SET command to take effect, as
+shown in the example above.
+
+
+<P>
+
+But for DB-Library options, you <STRONG>must not</STRONG> use the sequence with <A HREF="#dbsqlexec">dbsqlexec</A>
+and <A HREF="#dbresults">dbresults</A>, because since no command buffer has been initiated,
+<A HREF="#dbresults">dbresults</A> will never return NO_MORE_RESULTS, but appears to return SUCCEED and then
+FAIL.
+
+
+<P>
+
+The following options are DB-Library options: DBANSItoOEM, DBOEMtoANSI,
+DBBUFFER, DBNOAUTOFREE, and DBTEXTLIMIT. (Books Online fails to define the
+first two as DB-Library options.)
+
 
 <P>
 
@@ -986,8 +1027,13 @@ Constants for options are declared in MSSQL::DBlib::Const::Options.
 
 <P>
 
-Unsets the option $opt, which might be on by default, or previously have
-been set with <A HREF="#dbsetopt">dbsetopt</A>.
+Unsets the option <CODE>$opt</CODE>, which might be on by default, or previously have been set with <A HREF="#dbsetopt">dbsetopt</A>.
+
+
+<P>
+
+See <A HREF="#dbsetopt">dbsetopt</A> for when and when not calling <A HREF="#dbsqlexec">dbsqlexec</A> and <A HREF="#dbresults">dbresults</A>
+after calling <A HREF="#dbsetopt">dbsetopt</A>.
 
 
 <P>
@@ -1036,51 +1082,6 @@ refer to Books Online for this.
 Note: I've played with this function both in SQL 6.5 and SQL 7 to get
 offsets to T-SQL statements and I didn't the results I got were neither
 useful nor consistent. Use at your own risk.
-
-
-<P>
-
-<P>
-<HR>
-<H3><A NAME="dbwritetext">dbwritetext
-
-</A></H3>
-<PRE>   $status = $dbh-&gt;dbwritetext($colname, $dbh_2, $colnum, $text [, $log])
-</PRE>
-
-<P>
-
-Inserts or updates data in a TEXT or IMAGE column. <CODE>$colname</CODE> is
-the name of the text column. <CODE>$dbh_2</CODE> is the handle of another
-server connection, and which should have an active query against the table
-of the text column. <CODE>$colnum</CODE> is the number of the text column <EM>in
-that query</EM> (thus, not in the table). <CODE>$text</CODE> is the text to be inserted.
-<CODE>$log</CODE> specifies whether the operation is to be logged or not.
-If you leave out $log, the operation is not logged. Note, however, that you
-must set the db option <EM>select into/bulk copy</EM> to be able to use non-logged update.
-
-
-<P>
-
-Example:
-
-
-<P>
-
-<PRE>   $dbh_2-&gt;dbcmd('SELECT txt, t_index FROM text_table WHERE t_index = 5');
-   $dbh_2-&gt;dbsqlexec; $dbh_2-&gt;dbresults;
-   $dbh_2-&gt;dbnextrow2($dataref);
-</PRE>
-
-<P>
-
-<PRE>   $dbh-&gt;dbwritetext (&quot;text_table.txt&quot;, $dbh_2, 1,
-                      &quot;This is text added with MSSQL::DBlib&quot;);
-</PRE>
-
-<P>
-
-See also <EM>eq\wtext.pl</EM> for a complete script.
 
 
 <P>
@@ -1232,9 +1233,10 @@ When <CODE>$dbproc</CODE> is blessed, it is the handle you used to call the
 routine that caused the error. When unblessed it is just a temporary
 handle, containing nothing but a DBPROCESS reference. Thus, if you want to
 retrieve any of the handle attributes, you first need to examine <CODE>ref</CODE>
-$dbproc. Only when <CODE>$dbproc</CODE> is blessed you can call other
-MSSQL::DBlib routines, however you should be very restrictive with this, as
-stated in the DB-Library documentation.
+
+<CODE>$dbproc</CODE>. Only when <CODE>$dbproc</CODE> is blessed you can call other MSSQL::DBlib
+routines, however you should be very restrictive with this, as stated in
+the DB-Library documentation.
 
 
 <P>
@@ -1961,11 +1963,11 @@ Constants for RPC are declared in MSSQL::DBlib::Const::RPC. See
 
 <P>
 
-Initializes an RPC call to the stored procedure $SP. Available options are
-DBRPCRECOMPILE, which forces a recompile (i.e. a re-optimization) of the
-called stored procedure, and DBRPCRESET which cancels any previous batch of
-stored procedures. It's probably a good habit to always use DBRPCRESET
-unless you are really having more than one procedure in the same batch.
+Initializes an RPC call to the stored procedure <CODE>$SP</CODE>. Available options are DBRPCRECOMPILE, which forces a recompile (i.e. a
+re-optimization) of the called stored procedure, and DBRPCRESET which
+cancels any previous batch of stored procedures. It's probably a good habit
+to always use DBRPCRESET unless you are really having more than one
+procedure in the same batch.
 
 
 <P>
@@ -2011,9 +2013,8 @@ uniqueidentifier).
 <P>
 
 For datetime and smalldatetime parameters you can specify either a
-character datatype or a datetime datatype for $type. In the former case,
-conversion from string value to (small)datetime is performed by SQL Server,
-in the latter case by DB-Library (by <EM>dbconvert</EM>). This can yield different results, as DB-Library may look on regional
+character datatype or a datetime datatype for <CODE>$type</CODE>. In the former case, conversion from string value to (small)datetime is
+performed by SQL Server, in the latter case by DB-Library (by <EM>dbconvert</EM>). This can yield different results, as DB-Library may look on regional
 settings (as determined in the SQL Client Configuration Utility), but SQL
 Server does not. Also, the two may not support exactly the same set of date
 formats.
@@ -2067,7 +2068,7 @@ Server to return a reply. The default is 1, to wait.
 
 <P>
 
-When you specify a false value for $wait, you must later call <A HREF="#dbsqlok">dbsqlok</A>
+When you specify a false value for <CODE>$wait</CODE>, you must later call <A HREF="#dbsqlok">dbsqlok</A>
 before you can fetch data with <A HREF="#dbresults">dbresults</A>.
 
 
@@ -2107,7 +2108,7 @@ included in the list, so that you can receive the data into a hash.
 <P>
 
 When <CODE>$wantref</CODE> has a true value, a reference to an array or a
-hash is returned, depending on $use_hash.
+hash is returned, depending on <CODE>$use_hash</CODE>.
 
 
 <P>
@@ -2187,6 +2188,400 @@ NO_MORE_RPC_RESULTS (for the all but the last procedure in a batch).
 Returns a true value if the most recently executed stored procedure
 returned a status value. As with <A HREF="#dbretstatus">dbretstatus</A> you must first process the results sets of the stored procedure.
 
+
+<P>
+
+<P>
+<HR>
+<H2><A NAME="Text_image_functions">Text/image functions
+
+</A></H2>
+The functions for inserting and updating text/image columns in MSSQL::DBlib
+have a different interface from <STRONG>dbwritetext</STRONG> and <STRONG>dbupdatetext</STRONG> in DB-Library.
+
+
+<P>
+
+There is a simple example of using <A HREF="#dbwritetext">dbwritetext</A> in <EM>eg\wtext.pl</EM>. For example of all functions, please see the test script <EM>dblib\t\3_text.t</EM>.
+
+
+<P>
+
+Notice that by default, DB-Library and SQL Server have a limit on the
+maximum size of a text/image values you can recieve of mere 4096 bytes. You
+can use these calls to remove all limits:
+
+
+<P>
+
+<PRE>   $d-&gt;dbsetopt(DBTEXTSIZE, &quot;2147483647&quot;);
+   $d-&gt;dbsetopt(DBTEXTLIMIT, &quot;0&quot;);
+   $d-&gt;dbsqlexec;
+   while ($d-&gt;dbresults != NO_MORE_RESULTS) {}
+</PRE>
+
+<P>
+
+You cannot use these functions if you have enabled the table option
+<STRONG>text in row</STRONG> (available in SQL2000 an on).
+
+
+<P>
+
+General caveat: about the only time I play with text/image columns is when
+I work with the MSSQL::DBlib.
+
+
+<P>
+
+<P>
+<HR>
+<H3><A NAME="dbreadtext">dbreadtext
+
+</A></H3>
+<PRE>   $bytes = dbh-&gt;dbreadtext($buf, $len)
+</PRE>
+
+<P>
+
+You can always use <A HREF="#dbnextrow2">dbnextrow2</A> to retrieve a text/image value in its entirety - provided that the value is
+smaller than the current settings of the options DBTEXTSIZE and
+DBTEXTLIMIT, that is. But if the values are very large, you may prefer to
+receive the value in chunks, and to that end you use <A HREF="#dbreadtext">dbreadtext</A> in place of <A HREF="#dbnextrow2">dbnextrow2</A>.
+
+
+<P>
+
+To use to <A HREF="#dbreadtext">dbreadtext</A> you must submit a query with the one single column, the text/image column
+you want to retrieve.
+
+
+<P>
+
+<CODE>$buf</CODE> will receive with chunk of data. <CODE>$len</CODE> is how
+much data you want back at a maximum.
+
+
+<P>
+
+The return value <CODE>$bytes</CODE> can have any of these values:
+
+
+<P>
+
+<PRE>   &gt;0            Number of bytes read.
+   0             End of row reached.
+   FAIL          An error occurred.
+   NO_NORE_ROWS  All rows read.
+</PRE>
+
+<P>
+
+Note that the limits set by DBTEXTSIZE and DBTEXTLIMIT apply to <A HREF="#dbreadtext">dbreadtext</A>
+as well.
+
+
+<P>
+
+<P>
+<HR>
+<H3><A NAME="dbwritetext">dbwritetext
+
+</A></H3>
+<PRE>   $status = $dbh-&gt;dbwritetext($colname, $dbh_2, $colnum, $text [, $log])
+</PRE>
+
+<P>
+
+Inserts or updates data in a TEXT or IMAGE column. All existing data in the
+column is over-written by the new value.
+
+
+<P>
+
+<CODE>$colname</CODE> is the name of the text column, including table name.
+
+
+<P>
+
+<CODE>$dbh_2</CODE> is the handle of another server connection, and which
+should have an active query against the table of the text column.
+<CODE>$colname</CODE> should be part of that result set.
+
+
+<P>
+
+<CODE>$colnum</CODE> is the number of the text column <EM>in that query</EM> (thus, not in the table).
+
+
+<P>
+
+<CODE>$text</CODE> is the text to be inserted.
+
+
+<P>
+
+<CODE>$log</CODE> only has importance if the recovery model of the database
+is BULK_LOGGED (in SQL7 and earlier this corresponds to the database option <EM>select into/bulk copy</EM> set to true). In this mode <CODE>$log</CODE> controls whether the operation
+is actually logged or not. The default is 0, not to log. In other recovery
+models, <A HREF="#dbwritetext">dbwritetext</A> is always fully logged in the transaction log.
+
+
+<P>
+
+Example:
+
+
+<P>
+
+<PRE>   $dbh_2-&gt;dbcmd('SELECT txt, t_index FROM text_table WHERE t_index = 5');
+   $dbh_2-&gt;dbsqlexec; $dbh_2-&gt;dbresults;
+   $dbh_2-&gt;dbnextrow2($dataref);
+   $dbh-&gt;dbwritetext (&quot;text_table.txt&quot;, $dbh_2, 1,
+                      &quot;This is text added with MSSQL::DBlib&quot;);
+</PRE>
+
+<P>
+
+See also <EM>eg\wtext.pl</EM> for a complete script.
+
+
+<P>
+
+<P>
+<HR>
+<H3><A NAME="dbpreptext">dbpreptext
+
+</A></H3>
+<PRE>   $status = $dbh-&gt;dbpreptext($colname, $dbh_2, $colnum, $size, [, $log])
+</PRE>
+
+<P>
+
+Prepares the insertion/update of text for later calls with <A HREF="#dbmoretext">dbmoretext</A>.
+<CODE>$colname</CODE>, <CODE>$dbh_2</CODE>, <CODE>$colnum</CODE> and <CODE>$log</CODE> works in the same way as with
+<A HREF="#dbwritetext">dbwritetext</A>. <CODE>$size</CODE> is the size in bytes of the data you intend to insert
+with <A HREF="#dbmoretext">dbmoretext</A>.
+
+
+<P>
+
+Example of usage:
+
+
+<P>
+
+<PRE>   $d-&gt;dbcmd('SELECT the_text, t_index FROM ##text_table WHERE t_index = 6');
+   $d-&gt;dbsqlexec;
+   $stat = $d-&gt;dbresults;
+   $stat = $d-&gt;dbnextrow2($data);
+</PRE>
+
+<P>
+
+<PRE>   $d2-&gt;dbpreptext (&quot;##text_table.the_text&quot;, $d, 1, length($text1 . $text2))
+   $d2-&gt;dbsqlok;
+   $d2-&gt;dbresults;
+   $d2-&gt;dbmoretext(length($text1), $text1)
+   $d2-&gt;dbmoretext(undef, $text2)
+   $d2-&gt;dbsqlok;
+   while ($d2-&gt;dbresults != NO_MORE_RESULTS) {}
+</PRE>
+
+<P>
+
+Note that you twice must call <A HREF="#dbsqlok">dbsqlok</A> followed by <A HREF="#dbresults">dbresults</A> in this sequence. First once after calling <A HREF="#dbpreptext">dbpreptext</A> and then once you have finished calling <A HREF="#dbmoretext">dbmoretext</A>.
+
+
+<P>
+
+<P>
+<HR>
+<H3><A NAME="dbmoretext">dbmoretext
+
+</A></H3>
+<PRE>   $status = dbh-&gt;dbmoretext($len | undef, $buf);
+</PRE>
+
+<P>
+
+Adds a chunk of data to a text or image column. You must first have called <A HREF="#dbpreptext">dbpreptext</A> to initiate the operation. <CODE>$buf</CODE> is the data you send in,
+<CODE>$len</CODE> is the length of the data you write. You can pass <CODE>undef</CODE>
+instead of <CODE>$len</CODE>, in which case <A HREF="#dbmoretext">dbmoretext</A> will use take the length from <CODE>$buf</CODE>. (The interface may appear illogical, but I've preserved the parameter
+order from Sybperl.)
+
+
+<P>
+
+<P>
+<HR>
+<H3><A NAME="dbupdatetext">dbupdatetext
+
+</A></H3>
+<PRE>   $status = $dbh-&gt;dbupdatetext($colname, $dbh_2, $colnum, $text,
+                                [$insert_offset, [$delete_length, [, $log]]])
+</PRE>
+
+<P>
+
+Updates a portion of a text/image column. For the parameters <CODE>$colname</CODE>,
+<CODE>$dbh_2</CODE>, <CODE>$colnum</CODE>, <CODE>$text</CODE> and <CODE>$log</CODE> please see the description for <A HREF="#dbwritetext_">dbwritetext.</A>
+
+
+
+
+<P>
+
+<CODE>$insert_offset</CODE> specifies where in the column
+<CODE>$text</CODE> is to be inserted and is an offset in bytes from
+beginning of the text/image value. An offset of 0 means the beginning of
+the string. -1, which is the default, means that <CODE>$text</CODE> will be
+appended to the existing value.
+
+
+<P>
+
+<CODE>$delete_length</CODE> specifies how many bytes that are to be deleted
+from the existing value in the column. The deletion starts at <CODE>$insert_offset</CODE>. -1 menas that all bytes from <CODE>$insert_offset</CODE> to the end are
+deleted. The default is 0, which means that no bytes are deleted.
+
+
+<P>
+
+<P>
+<HR>
+<H3><A NAME="dbprepupdatetext">dbprepupdatetext
+
+</A></H3>
+<PRE>   $status = $dbh-&gt;dbprepupdatetext($colname, $dbh_2, $colnum, $size,
+                                   [$insert_offset, [$delete_length, [, $log]]])
+</PRE>
+
+<P>
+
+<A HREF="#dbprepupdatetext">dbprepupdatetext</A> corresponds to <A HREF="#dbupdatetext">dbupdatetext</A> as <A HREF="#dbpreptext">dbpreptext</A>
+corresponds to <A HREF="#dbwritetext">dbwritetext</A>. That is, you are supposed to specify how much data you want to insert
+with <CODE>$size</CODE> and then call <A HREF="#dbmoretext">dbmoretext</A> to insert the data.
+
+
+<P>
+
+However... I have not been able to use this function successfully. As I see
+it there are three possibilities: a) calling the DB-Library function
+<STRONG>dbupdatetext</STRONG> with the flag UT_MORETEXT does not work at all. b) MSSQL::DBlib plays
+tricks in <A HREF="#dbnextrow2">dbnextrow2</A> that breaks the scheme. c) I have simply not understood how the calling
+sequence should be.
+
+
+<P>
+
+In the vain hope that the right answer is c), I have included and
+documented
+<A HREF="#dbprepupdatetext">dbprepupdatetext</A>, but you are warned.
+
+
+<P>
+
+<P>
+<HR>
+<H3><A NAME="dbdeletetext">dbdeletetext
+
+</A></H3>
+<PRE>   $status = $dbh-&gt;dbdeletetext($colname, $dbh_2, $colnum,
+                                $insert_offset, $delete_length, [, $log])
+</PRE>
+
+<P>
+
+Deletes <CODE>$delete_length</CODE> bytes from the text/image column,
+starting at <CODE>$insert_offset</CODE> which must be &gt;= 0. No new bytes
+are inserted to the column.
+
+
+<P>
+
+For <CODE>$colname</CODE>, <CODE>$dbh_2</CODE>, <CODE>$colnum</CODE> and <CODE>$log</CODE>, see <A HREF="#dbwritetext">dbwritetext</A>.
+
+
+<P>
+
+<P>
+<HR>
+<H3><A NAME="dbcopytext">dbcopytext
+
+</A></H3>
+<PRE>   $status = $dbh-&gt;dbcopytext($colnamedest, $colnamesrc,
+                              $dbh_dest, $colnumdest,
+                              $dbh_src,  $colnumsrc
+                              [$insert_offset, [$delete_length, [, $log]]])
+</PRE>
+
+<P>
+
+<A HREF="#dbcopytext">dbcopytext</A> copies text from one text column to another.
+
+
+<P>
+
+<CODE>$colnamedest</CODE> is the name of the table and column to copy to.
+<CODE>$colnamesrc</CODE> is the table and column to copy from.
+
+
+<P>
+
+<CODE>$dbh_dest</CODE> is the handle of another server connection, and
+which should have an active query against the destination column.
+<CODE>$colnamedest</CODE> should be part of that result set.
+
+
+<P>
+
+<CODE>$colnumdest</CODE> is the number of <CODE>$colnamedest</CODE> <EM>in that query</EM> (thus, not in the table).
+
+
+<P>
+
+<CODE>$dbh_src</CODE> and <CODE>$colnumsrc</CODE> are the equivalent for
+the source column.
+
+
+<P>
+
+<CODE>$insert_offset</CODE>, <CODE>$delete_length</CODE> and <CODE>$log</CODE> works as for <A HREF="#dbupdatetext">dbupdatetext</A>.
+
+
+<P>
+
+Example:
+
+
+<P>
+
+<PRE>   $dest-&gt;dbcmd(&quot;SELECT t_index, the_text FROM dest_table WHERE t_index = 36&quot;);
+   $dest-&gt;dbsqlexec;
+   $dest-&gt;dbresults;
+   $dest-&gt;dbnextrow2($data);
+</PRE>
+
+<P>
+
+<PRE>   $src-&gt;dbcmd(&quot;SELECT txt FROM src_tbl WHERE id = 2&quot;);
+   $src-&gt;dbsqlexec
+   $src-&gt;dbresults;
+   $src-&gt;dbnextrow2($data);
+</PRE>
+
+<P>
+
+<PRE>   $d-&gt;dbcopytext('dest_table.the_text', 'src_tbl.txt', $dest, 2, $src, 1)
+</PRE>
+
+<P>
+
+<PRE>   $dest-&gt;dbcancel;
+   $src-&gt;dbcancel;
+   $d-&gt;dbcancel;
+</PRE>
 
 <P>
 

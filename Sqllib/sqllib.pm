@@ -1,12 +1,25 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/MSSQL/Sqllib/sqllib.pm 7     00-09-14 22:37 Sommar $
-# Copyright (c) 1997-1999 Erland Sommarskog
+# $Header: /Perl/MSSQL/Sqllib/sqllib.pm 9     01-05-01 22:45 Sommar $
+# Copyright (c) 1997-2001 Erland Sommarskog
 #
 #   I don't care under which license you use this, as long as you don't
 #   claim that you wrote it yourself.
 #
 # $History: sqllib.pm $
 # 
+# *****************  Version 9  *****************
+# User: Sommar       Date: 01-05-01   Time: 22:45
+# Updated in $/Perl/MSSQL/Sqllib
+# Resultstyle and rowstyle can now come in any order. sql_one now permits
+# more than one result set. Fixed crash which occured when there was no
+# result set at all.
+#
+# *****************  Version 8  *****************
+# User: Sommar       Date: 00-11-07   Time: 23:03
+# Updated in $/Perl/MSSQL/Sqllib
+# Call xp_msver with sql and not sql_one, since early versions of 6.5
+# returns more than one result set.
+#
 # *****************  Version 7  *****************
 # User: Sommar       Date: 00-09-14   Time: 22:37
 # Updated in $/Perl/MSSQL/Sqllib
@@ -50,7 +63,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS
             %VARLENTYPES %STRINGTYPES %LARGETYPES %QUOTEDTYPES %BINARYTYPES
             $VERSION);
 
-$VERSION = "1.007";
+$VERSION = "1.008";
 
 use MSSQL::DBlib;
 use MSSQL::DBlib::Const::General;
@@ -83,11 +96,13 @@ sub SINGLEROW {741}
 sub SINGLESET {643}
 sub MULTISET  {139}
 sub KEYED     {124}
+sub RESULTSTYLES {(NORESULT, SINGLEROW, SINGLESET, MULTISET, KEYED)};
 
 # Row-style constants.
 sub SCALAR    {17}
 sub LIST      {89}
 sub HASH      {93}
+sub ROWSTYLES {(SCALAR, LIST, HASH)}
 
 # Separator when rows returned in one string, reconfigurarable.
 $SQLSEP = "\022";
@@ -172,7 +187,8 @@ sub sql_init {
     my $has_msver = $X->sql_one("SELECT COUNT(*) FROM master..sysobjects WHERE " .
                                 "name = 'xp_msver'");
     if ($has_msver) {
-       my %sqlversion = $X->sql_one("EXEC master..xp_msver 'ProductVersion'");
+       my %sqlversion = $X->sql("EXEC master..xp_msver 'ProductVersion'",
+                                HASH, SINGLEROW);
        $X->{SQL_version} = $sqlversion{'Character_Value'};
     }
     else {
@@ -355,7 +371,7 @@ sub sql_one
     my($X) = (ref @_[$[] eq $packname ? shift @_ : $def_handle);
     my($sql, $rowstyle) = @_;
 
-    my ($dataref, $stat, $dummy);
+    my ($dataref, $saveref, $stat, $dummy);
 
     # Make sure $rowstyle has a legal value.
     $rowstyle = $rowstyle || (wantarray ? HASH : SCALAR);
@@ -377,35 +393,41 @@ sub sql_one
     $stat = $X->dbsqlexec;
     croak "${packname}::sql_one failed" if $X->{errInfo}{dieFlag};
 
-    $stat = $X->dbresults;
-    croak "${packname}::sql_one failed" if $X->{errInfo}{dieFlag};
-    croak "Single-row query '$sql' returned no result set." if $stat != SUCCEED;
+    my $sets = 0;
+    my $rows = 0;
+    while ($X->dbresults != NO_MORE_RESULTS) {
+       die "dbresults failed" if $X->{errInfo}{dieFlag};
 
-    $X->dbnextrow2($dataref, $rowstyle == HASH);
-    croak "${packname}::sql_one failed" if $X->{errInfo}{dieFlag};
-    if (not $dataref) {
-        $X->dbcancel;
-        croak "Single-row query '$sql' returned no row.";
+       $sets++;
+
+       $stat = $X->dbnextrow2($dataref, $rowstyle == HASH);
+       die "dbnextrow2 failed" if $X->{errInfo}{dieFlag} or $stat == FAIL or
+                                  $stat == BUF_FULL;
+       next if $stat == NO_MORE_ROWS;
+       $rows++;
+       $saveref = $dataref;
+
+       # If we have a second row, something is wrong.
+       if ($rows > 1) {
+          $X->dbcancel;
+          croak "Single-row query '$sql' returned more than one row.";
+       }
     }
 
-    if ($X->dbnextrow2($dummy) != NO_MORE_ROWS) {
-       $X->dbcancel;
-       croak "Single-row query '$sql' returned more than one row.";
-    }
+    # If don't have any result set, something is wrong.
+    croak "Single-row query '$sql' returned no result set." if $sets == 0;
 
-    if ($X->dbresults != NO_MORE_RESULTS) {
-       $X->dbcancel;
-       croak "Single-row query '$sql' returned more than one result-set.";
-    }
+    # Same if we have no row at at all.
+    croak "Single-row query '$sql' returned no row." if $rows == 0;
 
     # Apply server-to-client conversion
-    $X->do_conversion('to_client', $dataref);
+    $X->do_conversion('to_client', $saveref);
 
     if (wantarray) {
-       return (($rowstyle == HASH) ? %$dataref : @$dataref);
+       return (($rowstyle == HASH) ? %$saveref : @$saveref);
     }
     else {
-       return (($rowstyle == SCALAR) ? list_to_scalar($dataref) : $dataref);
+       return (($rowstyle == SCALAR) ? list_to_scalar($saveref) : $saveref);
     }
 }
 
@@ -1008,34 +1030,105 @@ sub clone_for_internal_call {
 sub check_style_params {
 # Checks that row- and resultstyle parameters are correct, and provides
 # defaults.
-    my($rowstyle) = \$_[0];
-    my($resultstyle) = \$_[1];
-    my($keys)        = $_[2];
 
-    # Default values for style parameters
-    $$rowstyle    = $$rowstyle    || HASH;
-    $$resultstyle = $$resultstyle || SINGLESET;
+    # This is how the parameters eventually will be arranged on return.
+    my($rowstyleref)    = \$_[0];
+    my($resultstyleref) = \$_[1];
+    my($keysref)        = \$_[2];
 
-    # Check that style parameters are legal
-    unless (grep ($_ == $$rowstyle, (SCALAR, LIST, HASH))) {
-       croak "$packname: Illegal rowstyle value: $$rowstyle";
+    my ($rowstyle, $resultstyle, $keys);
+
+    my $rowdefault    = HASH;
+    my $resultdefault = SINGLESET;
+
+    # The simple case, just the defaults.
+    if (not defined $_[0] and not defined $_[1]) {
+       $rowstyle    = $rowdefault;
+       $resultstyle = $resultdefault;
     }
-    unless (grep ($_ == $$resultstyle,
-                 (NORESULT, SINGLEROW, SINGLESET, MULTISET, KEYED))
-            or ref $$resultstyle eq "CODE") {
-       croak "$packname: Illegal resultstyle value: $$resultstyle";
+    elsif (defined $_[0] and grep ($_ == $_[0], ROWSTYLES)) {
+    # First parameter is row style. Next must be result style or be undefined.
+       $rowstyle = $_[0];
+       $resultstyle = $_[1] || $resultdefault;
+
+       unless (grep ($_ == $resultstyle, RESULTSTYLES) or
+               ref $resultstyle eq "CODE") {
+          croak "$packname: Illegal resultstyle value: $resultstyle";
+       }
+    }
+    elsif (defined $_[1] and grep ($_ == $_[1], ROWSTYLES)) {
+    # Second parameter is row style. First must be result style or be undefined.
+       # The default.
+       $rowstyle = $_[1];
+       $resultstyle = $_[0] || $resultdefault;
+
+       unless (grep ($_ == $resultstyle, RESULTSTYLES) or
+               ref $resultstyle eq "CODE") {
+          croak "$packname: Illegal resultstyle value: $resultstyle";
+       }
+    }
+    elsif (defined $_[0] and
+           (grep ($_ == $_[0], RESULTSTYLES) or ref $_[0] eq "CODE")) {
+    # First parameter is result style and second is not row style, but may be
+    # keys.
+       $resultstyle = $_[0];
+
+       # Move keys if there are any set row style to default.
+       if (defined $_[1] and ref $_[1] eq 'ARRAY') {
+          $keys = $_[1];
+          $rowstyle = $rowdefault;
+       }
+       elsif (not defined $_[1]) {
+          $rowstyle = $rowdefault;
+       }
+       else {
+          croak "$packname: Illegal rowstyle value: $_[1]";
+       }
+    }
+    elsif (defined $_[1] and
+           (grep ($_ == $_[1], RESULTSTYLES) or ref $_[1] eq "CODE")) {
+    # Second parameter is result style and second is not row style.
+       $resultstyle = $_[1];
+
+       # First parameter must be undef.
+       if (not defined $_[0]) {
+          $rowstyle = $rowdefault;
+       }
+       else {
+          croak "$packname: Illegal rowstyle value: $_[0]";
+       }
+    }
+    else {
+       $_[0] = '' if not defined $_[0];
+       $_[1] = '' if not defined $_[1];
+       croak "$packname: Illegal rowstyle and/or resultstyle values: $_[0], $_[1]";
+    }
+
+    # Final check that style parameters are legal
+    unless (grep ($_ == $rowstyle, ROWSTYLES)) {
+       croak "$packname: Illegal rowstyle value: $rowstyle";
+    }
+    unless (grep ($_ == $resultstyle, RESULTSTYLES) or
+            ref $resultstyle eq "CODE") {
+       croak "$packname: Illegal resultstyle value: $resultstyle";
     }
 
     # If result style is KEYED, check that we have a sensible keys.
-    if ($$resultstyle == KEYED) {
+    if ($resultstyle == KEYED) {
+       $keys = $_[2] unless $keys;
        croak "$packname: No keys given for result style KEYED" unless $keys;
        croak "$packname: \$keys is not a list reference" unless ref $keys eq "ARRAY";
        croak "$packname: Empty key array given for resultstyle KEYED" if @$keys == 0;
-       if ($$rowstyle != HASH) {
+       if ($rowstyle != HASH) {
           croak "$packname: \@\$keys must be numeric for rowstyle LIST/SCALAR"
              if grep(/\D/, @$keys);
        }
     }
+
+    # And set the in/out parameters
+    $$rowstyleref    = $rowstyle;
+    $$resultstyleref = $resultstyle;
+    $$keysref        = $keys;
 }
 
 #------------------- get_object_id, internal ---------------------------
@@ -1084,7 +1177,6 @@ sub get_result_sets {
 
     $X->{errInfo}{dieFlag} = 0;
     $ix = $ressetno = 0;
-    $keyed_res = {};
     $userstat = RETURN_NEXTROW;
     while ($X->dbresults != NO_MORE_RESULTS) {
        die "dbresults failed" if $X->{errInfo}{dieFlag};
@@ -1098,10 +1190,14 @@ sub get_result_sets {
           next;
        }
 
-       # For the regular resultstyles create an empty array, if there is none at
+       # For the regular result styles create an empty array, if there is none at
        # the current index.
        if ($isregular) {
           @{$$resref[$ix]} = () unless defined @{$$resref[$ix]};
+       }
+       elsif ($resultstyle == KEYED) {
+          # For KEYED create result set, now we know we have a result set.
+          $keyed_res = {} unless $keyed_res;
        }
 
        do {
@@ -1121,7 +1217,6 @@ sub get_result_sets {
              if ($rowstyle == SCALAR and $resultstyle != KEYED) {
                 $dataref = list_to_scalar($dataref);
              }
-
 
              # Save the row if we have a regular resultstyle.
              if ($isregular) {
@@ -1165,17 +1260,30 @@ sub get_result_sets {
        return $userstat;
     }
     elsif (wantarray) {
-       if    ($resultstyle == MULTISET)  {return @$resref }
-       elsif ($resultstyle == SINGLESET) {return @{$$resref[0]} }
-       elsif ($resultstyle == SINGLEROW) {
-           if    ($rowstyle == HASH)
-              { return (defined $$resref[0][0] ? %{$$resref[0][0]} : () )}
-           elsif ($rowstyle == LIST)
-              { return (defined $$resref[0][0] ? @{$$resref[0][0]} : () )}
-           elsif ($rowstyle == SCALAR) { return @{$$resref[0]} }
+       if ($resultstyle == KEYED) {
+          if (defined $keyed_res) {
+             return %$keyed_res;
+          }
+          else {
+             return ();
+          }
        }
-       elsif ($resultstyle == KEYED) { return %$keyed_res; }
-       else  { return ()}
+       elsif (defined $resref) {
+          if    ($resultstyle == MULTISET)  {return @$resref }
+          elsif ($resultstyle == SINGLESET) {return @{$$resref[0]} }
+          elsif ($resultstyle == SINGLEROW) {
+              if    ($rowstyle == HASH)
+                 { return (defined $$resref[0][0] ? %{$$resref[0][0]} : () )}
+              elsif ($rowstyle == LIST)
+                 { return (defined $$resref[0][0] ? @{$$resref[0][0]} : () )}
+              elsif ($rowstyle == SCALAR) { return @{$$resref[0]} }
+          }
+          elsif ($resultstyle == KEYED) { return %$keyed_res; }
+          else  { return ()}
+       }
+       else {
+          return ();
+       }
     }
     else {
        if    ($resultstyle == MULTISET)  {return $resref }

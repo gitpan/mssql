@@ -11,11 +11,11 @@ Server version, your regional settings and a few more things. Thus you may
 see failures, where I don't. This text attempts to indicate what could happen.
 
 <H3>Running the test scripts</H3>
-If you have Perl 5.004 or Perl 5.005, including ActiveState Perl 5xx, the
+If you have Perl 5.004 or later, including ActiveState Perl versions, the
 simplest way to run the test scripts is with <KBD>MAKE test</KBD>. If you
 only have ActiveState 3xx, you only have the option of running the files
-directly from the command line. With AS 3xx you must be standing in the
-in the directory where the test scripts reside, Dblib/t and Sqllib/t respectively.
+directly from the command line. With AS 3xx you must be in the
+directory where the test scripts reside, Dblib/t and Sqllib/t respectively.
 <P>
 Before you can run the scripts, you probably need to edit the files
 DBlib/t/sqllogin.pl and Sqllib/t/sqllogin.pl to specify username, password
@@ -23,12 +23,9 @@ and server. As shipped, they will attempt to log in as <I>sa</I> with no
 password on the local server. Don't forget to delete sensitive information
 from the files, when you have completed testing!
 <P>
-All test scripts run in tempdb, and does only create temporary tables and
+All test scripts run in tempdb, and do only create temporary tables and
 procedures.
 <H3>Tests for MSSQL::DBlib</H3>
-Please notes that the two latter tests requires that MSSQL::Sqllib is present
-as well.
-<P>
 <B>1_dblib.t</B>
 tests basic DBlib functions: logging in, getting a result set,
 using a message handler, using RPC routines. Somewhat pessimistic in nature,
@@ -37,17 +34,21 @@ it aborts on the first error that occurs.
 If you run it directly from the command line, you will see one error message;
 this is natural as we are testing the error handler.
 <P>
-<B>2_bcp.t</B> and <B>3_text.t</B> tests BCP routines and
-<A HREF="docs/mssql-dblib.html#dbwritetext">dbwritetext</A> respectively. There
-are no known issues with these scripts. If you are considering using the bcp
-routines to bulk copy from a file, 2_bcp.t might give you some hints.
+<B>2_bcp.t</B> tests BCP routines. This script requires MSSQL::Sqllib to
+run.
+<P>
+<B>3_text.t</B> tests the text/image functions. The last part of the script
+attempts to test
+<A HREF="docs/mssql-dblib.html#dbprepupdatetext">dbprepupdaetext</A> but
+since I never managed to get this to work, the script exits before that
+part is reached.
 
 <H4>Tests for MSSQL::Sqllib</H4>
 All these tests do of course require that MSSQL::DBlib is present, as
 MSSQL::Sqllib is an heir of MSSQL::DBlib.
 <P>
 <B>1_resultsets.t</B> tests the various row and result styles. There are no known
-issues with this script, except that test 73 fails if you run without warnings.
+issues with this script, except that test 99 fails if you run without warnings.
 If you are bewildered by resulting structure of the various combinations of row
 and result styles, you might get an idea by studying this script.
 <P>
@@ -56,19 +57,11 @@ and result styles, you might get an idea by studying this script.
 tests all SQL Server 6.5 datatypes. This script is sensitive to your configuration
 and may fail when testing date values if your regional settings are such that
 "Apr" is not understood as a month. The tests for real and decimal numbers
-may fail with rounding errors. I know for a fact that the tests with the money
-datatype for sql_insert fails with SQL Server 7 Beta 3 which fails to round
-numeric literals.
+may fail with rounding errors.
 <P>
-<B>3_conversion_t</B> is very sensitive to configuration. It should pass if
-your OEM charset is CP850 and your server charset is Latin-1. With other
-combinations, a couple of the tests are likely to fail. Of course, I ought to
-write the script so that it skipped the tests with other configurations. However,
-finding out which are the default charsets for server and client, is part of
-the test. But let me it put this way: if test 1 fails, and the remaining tests
-are not run at all, you have a configuration problem. Presumably Win32::Registry
-is missing, or does not behave in an expected way. Then again, if you don't plan
-to use character-set conversion, there is no reason to lose sleep anyway.
+<B>3_conversion_t</B> will be skipped if your OEM charset is not CP850 or CP437.
+It assumes that the default character set of your server is Latin-1. It is
+not, it is likely that several tests will fail.
 <P>
 <B>4_errors.t</B> tests the error handling. There are no known issues with this
 script, save that it leaves a couple of files around in the sqllib/t directory.
@@ -78,7 +71,7 @@ test is skipped if your server is running 6.5 or lower.
 <P>
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 00-04-24 23:04 <!-- $-->
+Last updated <!--$$Modtime:--> 01-05-05 19:11 <!-- $-->
 </I>
 
 </HTML>

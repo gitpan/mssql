@@ -4,8 +4,8 @@
 </HEAD>
 <BODY>
 <BODY>
-<H1><CENTER>MSSQL::DBlib 1.006<BR>
-    MSSQL::Sqllib 1.007</CENTER></H1>
+<H1><CENTER>MSSQL::DBlib 1.008<BR>
+    MSSQL::Sqllib 1.008</CENTER></H1>
 <UL>
 <P>
      This is MSSQL, classes for calling DB-Library for Microsoft SQL
@@ -13,7 +13,7 @@
 <P>
      Copyright © 1991-1995 Michael Peppler<BR>
      Copyright © 1996      Christian Mallwitz, Intershop Gmbh<BR>
-     Copyright © 1997-2000 Erland Sommarskog<BR>
+     Copyright © 1997-2001 Erland Sommarskog<BR>
      All rights reserved.<BR>
 <P>
   This program is free software; you can redistribute it and/or modify
@@ -33,14 +33,14 @@ This is a source-only distribution, and you will need a C++ compiler and a
 MAKE utility to install it. At my web site you can find binary distributions
 (with source included) for ActivePerl:
 <UL>
-   <LI> <A HREF="http://www.algonet.se/~sommar/mssql/mssql-as5xx-1.007.zip">
-        http://www.algonet.se/~sommar/mssql/mssql-as5xx-1.007.zip</A> -
+   <LI> <A HREF="http://www.algonet.se/~sommar/mssql/mssql-as5xx-1.008.zip">
+        http://www.algonet.se/~sommar/mssql/mssql-as5xx-1.008.zip</A> -
         Binary (Intel) distribution for ActivePerl 5xx (Perl 5.005).
-   <LI> <A HREF="http://www.algonet.se/~sommar/mssql/mssql-active5.6-1.007.zip">
-        http://www.algonet.se/~sommar/mssql/mssql-active5.6-1.007.zip</A> -
+   <LI> <A HREF="http://www.algonet.se/~sommar/mssql/mssql-active5.6-1.008.zip">
+        http://www.algonet.se/~sommar/mssql/mssql-active5.6-1.008.zip</A> -
         Binary (Intel) distribution for ActivePerl 6xx (Perl 5.6).
-   <LI> <A HREF="http://www.algonet.se/~sommar/mssql/mssql-as3xx-1.007.zip">
-        http://www.algonet.se/~sommar/mssql/mssql-as3xx-1.007.zip</A> -
+   <LI> <A HREF="http://www.algonet.se/~sommar/mssql/mssql-as3xx-1.008.zip">
+        http://www.algonet.se/~sommar/mssql/mssql-as3xx-1.008.zip</A> -
         Binary (Intel) distribution for the old ActiveState Perl 3xx
         (Perl 5.003).
 </UL>
@@ -93,6 +93,22 @@ Text in <KBD>this type face</KBD> indicates command you run from the command pro
 </OL>
 You're on the air!
 
+<H3>Small troubleshooting guide</H3>
+You may get a message like this when you run a script which uses any of the MSSQL
+modules:
+<PRE>
+   Can't load 'f:/Perl/AS-613/site/lib/auto/MSSQL/DBlib/DBlib.dll' for module MSSQL
+   ::DBlib: load_file:The specified module could not be found at f:/Perl/AS-613/lib
+   /DynaLoader.pm line 200.
+    at 1_dblib.t line 22
+   Compilation failed in require at 1_dblib.t line 22.
+   BEGIN failed--compilation aborted at 1_dblib.t line 22.
+</PRE>
+This means that one or more of the DLLs required to run DB-Library are
+not present. Probably you have not installed the client part of SQL
+Server on the machine where you get this error. Grab hold of an SQL
+Server CD. You only need to install client libraries and tools.
+
 <H3>Manuals</H3>
 The <I>docs</I> subdirectory contains documentation for the two modules. There is
 a POD and an HTML file for each module. You may want to rebuild the HTML files,
@@ -115,16 +131,10 @@ you are using, and not the least which zip file you downloaded.
 <P>
 Please have patience with me, if I cannot address your issue
 on the spot. I am sometimes a busy man. ...and don't forget to read the manual!
-
-Please mail bug reports and suggestions to <A HREF="mailto:sommar-perl@algonet.se">
-sommar-perl@algonet.se</A>. Try to make your reports as specific as possible.
-Paricularly don't forget to include which versions of Perl, NT, SQL Server etc
-you are using. Please have patience with me, if I cannot address your issue
-on the spot. I am sometimes a busy man. ...and don't forget to read the manual!
 <P>
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 00-09-15 22:36 <!-- $-->
+Last updated <!--$$Modtime:--> 01-05-05 19:26 <!-- $-->
 </I>
 </BODY>
 </HTML>

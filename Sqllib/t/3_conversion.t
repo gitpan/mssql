@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------
-# $Header: /Perl/MSSQL/sqllib/t/3_conversion.t 1     99-01-30 16:36 Sommar $
+# $Header: /Perl/MSSQL/Sqllib/t/3_conversion.t 2     01-05-01 22:50 Sommar $
 #
 # Tests that it's possible to set up a conversion based on the local
 # OEM character set and the server charset. Mainly is this is test that
@@ -7,6 +7,11 @@
 #
 # $History: 3_conversion.t $
 # 
+# *****************  Version 2  *****************
+# User: Sommar       Date: 01-05-01   Time: 22:50
+# Updated in $/Perl/MSSQL/Sqllib/t
+# Now also tests for CP437.
+#
 # *****************  Version 1  *****************
 # User: Sommar       Date: 99-01-30   Time: 16:36
 # Created in $/Perl/MSSQL/sqllib/t
@@ -21,7 +26,7 @@ $| = 1;
 
 print "1..17\n";
 
-my($shrimp, $shrimp_850, $shrimp_bogus, @data, $data, %data);
+my($shrimp, $shrimp_850, $shrimp_twoway, $shrimp_bogus, @data, $data, %data);
 
 use vars qw($Srv $Uid $Pwd);
 require &dirname($0) . '\sqllogin.pl';
@@ -47,10 +52,26 @@ sql(<<'SQLEND');
       SELECT @shrimp = shrimp FROM #nisse WHERE @i = i
 SQLEND
 
+# Get client char-set.
+my $client_cs = get_codepage_from_reg('OEMCP');
+
 # These are the constants we use to test. It's all about shrimp sandwiches.
 $shrimp       = 'räksmörgås';  # The way it should be in Latin-1.
-$shrimp_850   = 'r„ksm”rg†s';  # It's in CP850.
-$shrimp_bogus = 'rõksm÷rgÕs';  # Converted to Latin-1 as if it was CP850 but it wasn't.
+if ($client_cs == 850) {
+   $shrimp_850    = 'r„ksm”rg†s';  # It's in CP850.
+   $shrimp_twoway = 'räksmörgås'; # Latin-1 -> CP850 and back.
+   $shrimp_bogus  = 'rõksm÷rgÕs';  # Converted to Latin-1 as if it was CP850 but it wasn't.
+}
+elsif ($client_cs == 437) {
+   $shrimp_850    = 'r„ksm”rg†s';  # It's in CP437.
+   $shrimp_twoway = 'r_ksmörg_s';  # Latin-1 -> Cp437 and back. Not round-trip.
+   $shrimp_bogus  = 'r_ksm÷rg_s';  # Converted to Latin-1 as if it was CP437 but it wasn't.
+}
+else {
+   print "Skipping this test; no test defined for code-page $client_cs\n";
+   print "1..0\n";
+   exit;
+}
 
 
 # Now add first set of data with no conversion in effect.
@@ -78,7 +99,7 @@ else {
 
 # This should give the real McCoy - it's been converted in both directions.
 @data = sql("SELECT shrimp FROM #nisse WHERE i BETWEEN 11 AND 13", SCALAR);
-if (compare(\@data, [$shrimp, $shrimp, $shrimp])) {
+if (compare(\@data, [$shrimp_twoway, $shrimp_twoway, $shrimp_twoway])) {
    print "ok 3\n";
 }
 else {
@@ -96,7 +117,7 @@ else {
 
 # Again, in Latin-1.
 sql_sp("#nisse_get_sp", [11, \$data]);
-if ($data eq $shrimp) {
+if ($data eq $shrimp_twoway) {
    print "ok 5\n";
 }
 else {
@@ -145,7 +166,7 @@ else {
 
 # Now we will make a test that we convert hash keys correctly. We will also
 # test asymmetric conversion and that sql_one converts properly.
-sql_set_conversion("CP850", "iso_1", TO_CLIENT_ONLY);
+sql_set_conversion("CP$client_cs", "iso_1", TO_CLIENT_ONLY);
 {
    my %ref;
    $ref{$shrimp_850} = $shrimp_850;
@@ -168,10 +189,10 @@ sql_set_conversion("CP850", "iso_1", TO_CLIENT_ONLY);
 }
 
 # After this we have conversion both directions
-sql_set_conversion("CP850", "iso_1", TO_SERVER_ONLY);
+sql_set_conversion("CP$client_cs", "iso_1", TO_SERVER_ONLY);
 {
    my %ref;
-   $ref{$shrimp} = $shrimp;
+   $ref{$shrimp_twoway} = $shrimp_twoway;
 
    %data = sql("SELECT 'räksmörgås' = 'räksmörgås'", HASH, SINGLEROW);
    if (compare(\%ref, \%data)) {
@@ -202,6 +223,7 @@ sql_unset_conversion(TO_CLIENT_ONLY);
    }
    else {
       print "not ok 14\n";
+      print '<' . (keys(%ref))[0] . '> <' . (keys(%data))[0] . ">\n";
    }
 
    %data = sql_one("SELECT 'räksmörgås' = 'räksmörgås'");
@@ -300,4 +322,36 @@ sub compare {
    else {
       return ($x eq $y);
    }
+}
+
+#--------------------------------- Copied from Sqllib.pm
+sub get_codepage_from_reg {
+    my($cp_value) = shift @_;
+    # Reads the code page for OEM or ANSI. This is one specific key in
+    # in the registry.
+
+    my($REGKEY) = 'SYSTEM\CurrentControlSet\Control\Nls\CodePage';
+    my($regref, $dummy, $result);
+
+    # We need this module to read the registry, but as this is the only
+    # place we need it in, we don't C<use> it.
+    require 'Win32\Registry.pm';
+
+    $dummy = $main::HKEY_LOCAL_MACHINE;  # Resolve "possible typo" with AS Perl.
+    $main::HKEY_LOCAL_MACHINE->Open($REGKEY, $regref) or
+         die "Could not open registry key: '$REGKEY'\n";
+
+    # This is where stuff is getting really ugly, as I have found no code
+    # that works both with the ActiveState Perl and the native port.
+    if ($] < 5.004) {
+       Win32::RegQueryValueEx($regref->{'handle'}, $cp_value, 0,
+                              $dummy, $result) or
+             die "Could not read '$REGKEY\\$cp_value' from registry\n";
+    }
+    else {
+       $regref->QueryValueEx($cp_value, $dummy, $result);
+    }
+    $regref->Close or warn "Could not close registry key.\n";
+
+    $result;
 }

@@ -1,7 +1,19 @@
-$Header: /Perl/MSSQL/docs/mssql-dblib.pod 5     00-09-14 22:48 Sommar $
+$Header: /Perl/MSSQL/docs/mssql-dblib.pod 7     01-05-05 18:30 Sommar $
 
 $History: mssql-dblib.pod $
 # 
+# *****************  Version 7  *****************
+# User: Sommar       Date: 01-05-05   Time: 18:30
+# Updated in $/Perl/MSSQL/docs
+# MSSQL:DBlib 1.008: Added more text/image functions for a new section in
+# the manual. Made the text on dbsetopt clearer.Fixed some other minor
+# errors. Use C<> for $vars when needed.
+#
+# *****************  Version 6  *****************
+# User: Sommar       Date: 00-10-26   Time: 23:24
+# Updated in $/Perl/MSSQL/docs
+# Fixed incorrect documentation.
+#
 # *****************  Version 5  *****************
 # User: Sommar       Date: 00-09-14   Time: 22:48
 # Updated in $/Perl/MSSQL/docs
@@ -60,6 +72,7 @@ L<mssql-sqllib>.
 A simple Perl script using MSSQL::DBlib could look like this:
 
     use MSSQL::DBlib;
+    use MSSQL::DBlib::Const::General;
 
     $dbh = MSSQL::DBlib->dblogin('sa', $pwd, $server, 'test_app');
     $dbh->dbcmd("SELECT * FROM sysprocesses");
@@ -120,7 +133,7 @@ However, I have yet to fail to connect to a named instance.
 
 To use B<Windows NT authentication> (known as "Integrated Security" in
 SQL 6.5), call L</DBSETLSECURE> before calling L</dblogin> or L</dbopen>.
-In this case SQL Server will ignore $user and $pwd.
+In this case SQL Server will ignore $user and C<$pwd>.
 
 L</dblogin> is somewhat confusing if you are acquainted with DB-Library for C.
 To wit, the real call to the DB-Library namesake is in fact performed when
@@ -219,7 +232,7 @@ L</dbresults> can return any of these four values:
 B<SUCCEED>: result set was fetched successfully.
 
 B<FAIL>: something went wrong. Note that you must continue to call C<dbresults>
-until it calls NO_MORE_RESULTS, or cancel the batch with L</dbcancel>.
+until it returns NO_MORE_RESULTS, or cancel the batch with L</dbcancel>.
 
 B<NO_MORE_RESULTS>: there are no further results sets to process. When
 processing a query batch, you must call L</dbresults> until it returns
@@ -244,10 +257,10 @@ parameter $use_hash has a true value, the names of the columns are included
 in the list, so that you can receive the data into a hash.
 
 When $wantref has a true value, a reference to an array or a hash is
-returned, depending on $use_hash.
+returned, depending on C<$use_hash>.
 
 The return status from the DB-Library function I<dbnextrow> is available
-in $dbh->{DBstatus}.
+in C<$dbh-E<gt>{DBstatus}>.
 
 This function is deprecated and provided for compatibility only. It is implemented
 on top of L</dbnextrow2>, which is the preferred routine. See this routine for
@@ -259,7 +272,7 @@ further details.
 
 Get the next row from the current result set and return the status from the
 DB-Library function I<dbnextrow>. On a successful fetch, the data in the row
-is available in $dataref. When a fetch fails (see possible status values below),
+is available in C<$dataref>. When a fetch fails (see possible status values below),
 $dataref will be C<undef>.
 
 $dataref is a reference to an array (when $use_hash has a false value or is
@@ -300,7 +313,7 @@ An example with L</dbnextrow2> returning a hash:
    $dbh->dbsqlexec;
    $dbh->dbresults;
 
-   while ($dbh->dbnextrow($dataref, 1) == NO_MORE_ROWS) {
+   while ($dbh->dbnextrow($dataref, 1) != NO_MORE_ROWS) {
       print "$$dataref{Name} : $$dataref{Id}\n";
    }
 
@@ -459,11 +472,30 @@ return everything.
 
    $status = $dbh->dbsetopt($opt [, $char_val])
 
-Sets option $opt with optional character parameter $char_val. $opt is one
+Sets option $opt with optional character parameter C<$char_val>. $opt is one
 of the option values defined in the DB-Library manual (e.g. DBSTAT,
 DBTEXTSIZE). To get IO statistics from the server on, you would say:
 
     $dbh->dbsetopt(DBSTAT, "io");
+    $dbh->dbsqlexec;
+    while ($dbh->dbresults != NO_MORE_RESULTS) {}
+
+There are two kinds of options: SQL Server options (that have corresponding SET
+commands) and DB-Library options (that have no corresponding T-SQL commands at
+all.)
+
+For the SQL Server options L</dbsetopt> does not itself send the SET command to
+SQL Server, you must use L</dbsqlexec> and L</dbresults> just like after sending
+a command before the SET command to take effect, as shown in the example above.
+
+But for DB-Library options, you B<must not> use the sequence with L</dbsqlexec>
+and L</dbresults>, because since no command buffer has been initiated,
+L</dbresults> will never return NO_MORE_RESULTS, but appears to return SUCCEED
+and then FAIL.
+
+The following options are DB-Library options: DBANSItoOEM, DBOEMtoANSI,
+DBBUFFER, DBNOAUTOFREE, and DBTEXTLIMIT. (Books Online fails to define
+the first two as DB-Library options.)
 
 See also L</dbclropt> and L</dbisopt>. See F<eq\statistics.pl> for an example
 of using L</dbsetopt>.
@@ -474,8 +506,11 @@ Constants for options are declared in MSSQL::DBlib::Const::Options.
 
     $ret = $dbh->dbclropt($opt [, $char_val])
 
-Unsets the option $opt, which might be on by default, or previously have been set
+Unsets the option C<$opt>, which might be on by default, or previously have been set
 with L</dbsetopt>.
+
+See L</dbsetopt> for when and when not calling L</dbsqlexec> and L</dbresults>
+after calling L</dbsetopt>.
 
 =head3 dbisopt
 
@@ -499,31 +534,6 @@ refer to Books Online for this.
 Note: I've played with this function both in SQL 6.5 and SQL 7 to get
 offsets to T-SQL statements and I didn't the results I got were neither
 useful nor consistent. Use at your own risk.
-
-=head3 dbwritetext
-
-   $status = $dbh->dbwritetext($colname, $dbh_2, $colnum, $text [, $log])
-
-Inserts or updates data in a TEXT or IMAGE column. $colname is the
-name of the text column. $dbh_2 is the handle of another server
-connection, and which should have an active query against the table
-of the text column. $colnum is the number of the text column I<in
-that query> (thus, not in the table). $text is the text to be inserted.
-$log specifies whether the operation is to be logged or not. If
-you leave out $log, the operation is not logged. Note, however,
-that you must set the db option I<select into/bulk copy> to be able
-to use non-logged update.
-
-Example:
-
-   $dbh_2->dbcmd('SELECT txt, t_index FROM text_table WHERE t_index = 5');
-   $dbh_2->dbsqlexec; $dbh_2->dbresults;
-   $dbh_2->dbnextrow2($dataref);
-
-   $dbh->dbwritetext ("text_table.txt", $dbh_2, 1,
-                      "This is text added with MSSQL::DBlib");
-
-See also F<eq\wtext.pl> for a complete script.
 
 =head2 Exported Routines
 
@@ -611,7 +621,7 @@ blessed. When $dbproc is blessed, it is the handle you used to call the
 routine that caused the error. When unblessed it is just a temporary handle,
 containing nothing but a DBPROCESS reference. Thus, if you want to
 retrieve any of the handle attributes, you first need to examine C<ref>
-$dbproc. Only when $dbproc is blessed you can call other MSSQL::DBlib
+C<$dbproc>. Only when $dbproc is blessed you can call other MSSQL::DBlib
 routines, however you should be very restrictive with this, as stated in the
 DB-Library documentation.
 
@@ -979,7 +989,7 @@ F<eg/rpctest.pl> for an example on how to use these calls.
 
     $status = $dbh->dbrpcinit($SP, $option)
 
-Initializes an RPC call to the stored procedure $SP. Available options are
+Initializes an RPC call to the stored procedure C<$SP>. Available options are
 DBRPCRECOMPILE, which forces a recompile (i.e. a re-optimization) of the
 called stored procedure, and DBRPCRESET which cancels any previous batch
 of stored procedures. It's probably a good habit to always use DBRPCRESET
@@ -1009,7 +1019,7 @@ L</dbrpcparam> will actually send this as SQLVARCHAR (as DB-Library does not
 support uniqueidentifier).
 
 For datetime and smalldatetime parameters you can specify either a character
-datatype or a datetime datatype for $type. In the former case, conversion from
+datatype or a datetime datatype for C<$type>. In the former case, conversion from
 string value to (small)datetime is performed by SQL Server, in the latter case
 by DB-Library (by I<dbconvert>). This can yield different results, as DB-Library
 may look on regional settings (as determined in the SQL Client Configuration
@@ -1041,7 +1051,7 @@ Executes a call to a stored procedure initiated with L</dbrpcinit>. The paramete
 $wait determines if you want to wait for SQL Server to return a reply. The
 default is 1, to wait.
 
-When you specify a false value for $wait, you must later call L</dbsqlok>
+When you specify a false value for C<$wait>, you must later call L</dbsqlok>
 before you can fetch data with L</dbresults>.
 
 Seasoned DB-Library programmers should note that this function is slighlty
@@ -1063,7 +1073,7 @@ the names of the parameters are included in the list, so that you can receive
 the data into a hash.
 
 When $wantref has a true value, a reference to an array or a hash is
-returned, depending on $use_hash.
+returned, depending on C<$use_hash>.
 
 This function is deprecated and provided for compatibility. The preferred
 routine is L</dbretdata2> on top which L</dbretdata> is implemented. See
@@ -1109,6 +1119,220 @@ the last procedure in a batch).
 Returns a true value if the most recently executed stored procedure returned a
 status value. As with L</dbretstatus> you must first process the results sets
 of the stored procedure.
+
+=head2 Text/image functions
+
+The functions for inserting and updating text/image columns in MSSQL::DBlib
+have a different interface from B<dbwritetext> and B<dbupdatetext> in
+DB-Library.
+
+There is a simple example of using L</dbwritetext> in F<eg\wtext.pl>. For
+example of all functions, please see the test script F<dblib\t\3_text.t>.
+
+Notice that by default, DB-Library and SQL Server have a limit on the
+maximum size of a text/image values you can recieve of mere 4096 bytes.
+You can use these calls to remove all limits:
+
+   $d->dbsetopt(DBTEXTSIZE, "2147483647");
+   $d->dbsetopt(DBTEXTLIMIT, "0");
+   $d->dbsqlexec;
+   while ($d->dbresults != NO_MORE_RESULTS) {}
+
+You cannot use these functions if you have enabled the table option
+B<text in row> (available in SQL2000 an on).
+
+General caveat: about the only time I play with text/image columns is
+when I work with the MSSQL::DBlib.
+
+=head3 dbreadtext
+
+   $bytes = dbh->dbreadtext($buf, $len)
+
+You can always use L</dbnextrow2> to retrieve a text/image value in its
+entirety - provided that the value is smaller than the current settings of
+the options DBTEXTSIZE and DBTEXTLIMIT, that is. But if the values are
+very large, you may prefer to receive the value in chunks, and to that
+end you use L</dbreadtext> in place of L</dbnextrow2>.
+
+To use to L</dbreadtext> you must submit a query with the one single
+column, the text/image column you want to retrieve.
+
+$buf will receive with chunk of data. $len is how much data you want back
+at a maximum.
+
+The return value $bytes can have any of these values:
+
+   >0            Number of bytes read.
+   0             End of row reached.
+   FAIL          An error occurred.
+   NO_NORE_ROWS  All rows read.
+
+Note that the limits set by DBTEXTSIZE and DBTEXTLIMIT apply to L</dbreadtext>
+as well.
+
+=head3 dbwritetext
+
+   $status = $dbh->dbwritetext($colname, $dbh_2, $colnum, $text [, $log])
+
+Inserts or updates data in a TEXT or IMAGE column. All existing data in the
+column is over-written by  the new value.
+
+$colname is the name of the text column, including table name.
+
+$dbh_2 is the handle of another server connection, and which should have an
+active query against the table of the text column. $colname should be
+part of that result set.
+
+$colnum is the number of the text column I<in that query> (thus, not in
+the table).
+
+$text is the text to be inserted.
+
+$log only has importance if the recovery model of the database is
+BULK_LOGGED (in SQL7 and earlier this corresponds to the database
+option I<select into/bulk copy> set to true). In this mode $log
+controls whether the operation is actually logged or not. The default is
+0, not to log. In other recovery models, L</dbwritetext> is always fully
+logged in the transaction log.
+
+Example:
+
+   $dbh_2->dbcmd('SELECT txt, t_index FROM text_table WHERE t_index = 5');
+   $dbh_2->dbsqlexec; $dbh_2->dbresults;
+   $dbh_2->dbnextrow2($dataref);
+   $dbh->dbwritetext ("text_table.txt", $dbh_2, 1,
+                      "This is text added with MSSQL::DBlib");
+
+See also F<eg\wtext.pl> for a complete script.
+
+=head3 dbpreptext
+
+   $status = $dbh->dbpreptext($colname, $dbh_2, $colnum, $size, [, $log])
+
+Prepares the insertion/update of text for later calls with L</dbmoretext>.
+C<$colname>, C<$dbh_2>, $colnum and $log works in the same way as with
+L</dbwritetext>. $size is the size in bytes of the data you intend to
+insert with L</dbmoretext>.
+
+Example of usage:
+
+   $d->dbcmd('SELECT the_text, t_index FROM ##text_table WHERE t_index = 6');
+   $d->dbsqlexec;
+   $stat = $d->dbresults;
+   $stat = $d->dbnextrow2($data);
+
+   $d2->dbpreptext ("##text_table.the_text", $d, 1, length($text1 . $text2))
+   $d2->dbsqlok;
+   $d2->dbresults;
+   $d2->dbmoretext(length($text1), $text1)
+   $d2->dbmoretext(undef, $text2)
+   $d2->dbsqlok;
+   while ($d2->dbresults != NO_MORE_RESULTS) {}
+
+Note that you twice must call L</dbsqlok> followed by L</dbresults> in this
+sequence. First once after calling L</dbpreptext> and then once you have
+finished calling L</dbmoretext>.
+
+=head3 dbmoretext
+
+   $status = dbh->dbmoretext($len | undef, $buf);
+
+Adds a chunk of data to a text or image column. You must first have
+called L<dbpreptext> to initiate the operation. $buf is the data you
+send in, $len is the length of the data you write. You can pass C<undef>
+instead of C<$len>, in which case L</dbmoretext> will use take the length
+from C<$buf>. (The interface may appear illogical, but I've preserved the
+parameter order from Sybperl.)
+
+=head3 dbupdatetext
+
+   $status = $dbh->dbupdatetext($colname, $dbh_2, $colnum, $text,
+                                [$insert_offset, [$delete_length, [, $log]]])
+
+Updates a portion of a text/image column. For the parameters C<$colname>,
+C<$dbh_2>, C<$colnum>, $text and $log please see the description for L</dbwritetext.>
+
+$insert_offset specifies where in the column $text is to be inserted and
+is an offset in bytes from beginning of the text/image value. An offset of
+0 means the beginning of the string. -1, which is the default, means that
+$text will be appended to the existing value.
+
+$delete_length specifies how many bytes that are to be deleted from the
+existing value in the column. The deletion starts at C<$insert_offset>. -1
+menas that all bytes from $insert_offset to the end are deleted. The
+default is 0, which means that no bytes are deleted.
+
+=head3 dbprepupdatetext
+
+   $status = $dbh->dbprepupdatetext($colname, $dbh_2, $colnum, $size,
+                                   [$insert_offset, [$delete_length, [, $log]]])
+
+L</dbprepupdatetext> corresponds to L</dbupdatetext> as L</dbpreptext>
+corresponds to L</dbwritetext>. That is, you are supposed to specify how
+much data you want to insert with $size and then call L</dbmoretext> to
+insert the data.
+
+However... I have not been able to use this function successfully. As I see
+it there are three possibilities: a) calling the DB-Library function
+B<dbupdatetext> with the flag UT_MORETEXT does not work at all. b) MSSQL::DBlib
+plays tricks in L</dbnextrow2> that breaks the scheme. c) I have simply not
+understood how the calling sequence should be.
+
+In the vain hope that the right answer is c), I have included and documented
+L</dbprepupdatetext>, but you are warned.
+
+=head3 dbdeletetext
+
+   $status = $dbh->dbdeletetext($colname, $dbh_2, $colnum,
+                                $insert_offset, $delete_length, [, $log])
+
+Deletes $delete_length bytes from the text/image column, starting at
+$insert_offset which must be >= 0. No new bytes are inserted to the column.
+
+For C<$colname>, C<$dbh_2>, $colnum and C<$log>, see L</dbwritetext>.
+
+=head3 dbcopytext
+
+   $status = $dbh->dbcopytext($colnamedest, $colnamesrc,
+                              $dbh_dest, $colnumdest,
+                              $dbh_src,  $colnumsrc
+                              [$insert_offset, [$delete_length, [, $log]]])
+
+L</dbcopytext> copies text from one text column to another.
+
+$colnamedest is the name of the table and column to copy to. $colnamesrc is
+the table and column to copy from.
+
+$dbh_dest is the handle of another server connection, and which should have an
+active query against the destination column. $colnamedest should be
+part of that result set.
+
+$colnumdest is the number of $colnamedest I<in that query> (thus, not in
+the table).
+
+$dbh_src and $colnumsrc are the equivalent for the source column.
+
+C<$insert_offset>, $delete_length and $log works as for L</dbupdatetext>.
+
+Example:
+
+   $dest->dbcmd("SELECT t_index, the_text FROM dest_table WHERE t_index = 36");
+   $dest->dbsqlexec;
+   $dest->dbresults;
+   $dest->dbnextrow2($data);
+
+   $src->dbcmd("SELECT txt FROM src_tbl WHERE id = 2");
+   $src->dbsqlexec
+   $src->dbresults;
+   $src->dbnextrow2($data);
+
+   $d->dbcopytext('dest_table.the_text', 'src_tbl.txt', $dest, 2, $src, 1)
+
+   $dest->dbcancel;
+   $src->dbcancel;
+   $d->dbcancel;
+
+
 
 =head2 Two-Phase Commit Routines
 

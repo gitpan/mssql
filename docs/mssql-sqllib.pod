@@ -1,7 +1,14 @@
-$Header: /Perl/MSSQL/docs/mssql-sqllib.pod 6     00-09-14 22:49 Sommar $
+$Header: /Perl/MSSQL/docs/mssql-sqllib.pod 7     01-05-05 18:31 Sommar $
 
 $History: mssql-sqllib.pod $
 # 
+# *****************  Version 7  *****************
+# User: Sommar       Date: 01-05-05   Time: 18:31
+# Updated in $/Perl/MSSQL/docs
+# MSSQL::Sqllib 1.008: $rowstyle and $resultstyle can now be swapped.
+# sql_one now accepts extra result sets as long as they are empty.
+# Specified the result from sql() when there is no result set.
+#
 # *****************  Version 6  *****************
 # User: Sommar       Date: 00-09-14   Time: 22:49
 # Updated in $/Perl/MSSQL/docs
@@ -117,7 +124,7 @@ you have an explicit list, nothing is imported by default.
 
 =item consts
 
-Imports all constants, as well as $SQLSEP, the only control variable
+Imports all constants, as well as C<$SQLSEP>, the only control variable
 in MSSQL::Sqllib. (In fact it is quite much of a constant, save the
 fact that you can change it. :-)
 
@@ -200,7 +207,7 @@ B<$password>: NULL.
 
 B<$database>: the user's default database as defined in SQL Server, with
 one exception: for I<sa>, the database will be I<tempdb> to avoid a disaster,
-were you to accidently omit $database.
+were you to accidently omit C<$database>.
 
 To use B<Windows NT authentication> (known as "integrated security" MS SQL 6.5),
 call the MSSQL::DBlib routine L<mssql-dblib/DBSETLSECURE> prior to
@@ -235,10 +242,11 @@ such as the user's default database in SQL Server not being accessible. (If
 you need to continue after a failed login, remember that you can always run
 your L</sql_init> from an C<eval>.)
 
-B<$server> may refer to a named instance, for instance MYMACHINE\SECOND,
-B<but:> Named instances were introduced in SQL2000, and the official word from
-Microsoft is that named instances are not supported with DB-Library.
-However, I have yet to fail to connect to a named instance.
+B<$server> may refer to a named instance, for instance MYMACHINE\SECOND, B<but:>
+Microsoft does not officially support named instances with DB-Library. Nevertheless
+Microsoft have added some code to DB-Library so that it can understand named instances.
+It appears that it works with SQL Server authentication but not Windows NT
+authentication.
 
 The return value from L</sql_init> is a blessed reference to a hash, in this
 document usually called a I<handle>. The handle that is created the first time
@@ -248,14 +256,14 @@ of the handle.
 
 =head2 sql
 
-    $resultref = [$X->]sql($sql [, $rowstyle [, $resultstyle]]);
-    @result    = [$X->]sql($sql [, $rowstyle [, $resultstyle]]);
+    $resultref = [$X->]sql($sql [, $rowstyle] [, $resultstyle]]);
+    @result    = [$X->]sql($sql [, $rowstyle] [, $resultstyle]]);
     %result    = [$X->]sql($sql, HASH, SINGLEROW);
 
-    $hashref   = [$X->]sql($sql, $rowstyle, KEYED, \@keys);
-    %hash      = [$X->]sql($sql, $rowstyle, KEYED, \@keys);
+    $hashref   = [$X->]sql($sql [, $rowstyle], KEYED, \@keys);
+    %hash      = [$X->]sql($sql [, $rowstyle], KEYED, \@keys);
 
-    $retstat   = [$X->]sql($sql, $rowstyle, \&callback);
+    $retstat   = [$X->]sql($sql [, $rowstyle], \&callback);
 
 
 B<$sql>, the only mandatory parameter to L</sql>, is a string containing one
@@ -269,15 +277,20 @@ L</errInfo>. See this attribute for details.
 If you don't provide a handle, L</sql> uses the handle created by the first call
 to L</sql_init>.
 
-For details on how the various data types in SQL Server is returned, see
+For details on how the various data types in SQL Server are returned, see
 the MSSQL::DBlib routine L<mssql-dblib/dbnextrow2>.
 
 The data from SQL Server can be structured in several different ways, as determined
-by the parameters $rowstyle and $resultstyle. $rowstyle determines how individual
-rows appears, $resultstyle how the rows are structured. Below I say that the
+by the parameters $rowstyle and C<$resultstyle>. $rowstyle determines how individual
+rows appear, $resultstyle how the rows are structured. Below I say that the
 return value for a certain combination is a scalar, array or a hash. In every
 case when I say array or hash, you can always opt for receiving the return
 value in a scalar to get a reference to that array/hash.
+
+In the call syntax above, $rowstyle is shown as coming before C<$resultstyle>.
+However, L</sql> actually permits you to put $rowstyle after C<$resultstyle>.
+This is also true when $resultstyle is KEYED and C<\&callback>. However, $rowstyle
+must come before C<\@keys>.
 
 B<Row style>
 
@@ -320,7 +333,7 @@ B<$resultstyle> controls how the rows are "packaged". There are five possible va
 =item SINGLESET
 
 The rows are returned in one single array, which thus is an array of hashes,
-arrays or scalars depending on $rowstyle. The order of the array is the same
+arrays or scalars depending on C<$rowstyle>. The order of the array is the same
 as the order returned from SQL Server. If the batch returns two or more result
 sets, these will come after each other in the result set, and you will have to
 separate them yourself.
@@ -331,7 +344,7 @@ C<SINGLESET> is the default resultstyle.
 
 You get an array of result sets in the order they come from SQL Server. Each
 result set is in its turn an array of hashes, arrays or scalars dependning on
-$rowstyle.
+C<$rowstyle>.
 
 =item SINGLEROW
 
@@ -348,7 +361,7 @@ what you get, and it may or may not make sense. See also L</sql_one>.
 The return value is a hash keyed with the data in the highest-level key column
 in the result set. There can be more than one key level, in which case you
 will get one more hash dimension for each key level. In the bottom of the
-structure there is a hash, array or scalar, depending on $rowstyle, with the
+structure there is a hash, array or scalar, depending on C<$rowstyle>, with the
 non-key columns of the result set.
 
 Which S<column(s)> that supply the key values, is determined by the parameter
@@ -376,7 +389,7 @@ The keys you provide in @keys are supposed to be the unique keys of your result
 set, and appear in all rows of the result S<set(s)>. If a key listed in @keys
 does not appear in one of the rows, this is an error, and L</sql> will
 unconditionally abort. If a key value is a duplicate, L</sql> will emit a warning
-about this, if warnings are activated. It is undefined which values end up in
+about this, if warnings are activated. It is undefined which values that end up in
 the result set.
 
 If one or more of your key columns can hold NULL values, you will get warnings
@@ -394,6 +407,11 @@ array.
 
 The script F<sqllib\t\1_resultsets.t> can give you an idea of the structure
 you get with the various row and result styles.
+
+When there are no result sets in the query at all - which may happen if the batch
+does not compile, and you have changed L</errInfo> so that L</sql> does not
+abort on errors - you will get C<undef> in return if you specify a scalar return
+value. Else you will get an empty list/hash.
 
 B<Callbacks>
 
@@ -486,25 +504,25 @@ number of the COMPUTE BY clause in the query.
 
 L</sql_one> is similar to L</sql> with the C<SINGLEROW> result style. However,
 L</sql_one> requires the SQL batch to return exactly one row, and will abort
-execution if no rows were found, or if there were more than one row or result
-set.
+execution if no rows were found, or if there were more than one row. The
+batch may return more than one result set, but all but one must be empty.
 
 =head2 sql_sp
 
    $resultref = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
-                                 [, $rowstyle [, $resultstyle]]);
+                                 [, $rowstyle] [, $resultstyle]);
    @result    = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
-                                 [, $rowstyle [, $resultstyle]]);
+                                 [, $rowstyle] [, $resultstyle]);
    %result    = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params],
                                  HASH, SINGLESET);
 
-   $hashref   = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params],
-                                 $rowstyle, KEYED, \@keys);
-   %hash      = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params],
-                                 $rowstyle, KEYED, \@keys);
+   $hashref   = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
+                                 [, $rowstyle], KEYED, \@keys);
+   %hash      = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
+                                 [,  $rowstyle], KEYED, \@keys);
 
-   $retstat   = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params],
-                                 $rowstyle, \&callback);
+   $retstat   = [$X->]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
+                                 [, $rowstyle], \&callback);
 
 L</sql_sp> calls the stored procedure $sp and retrieves the return status of
 the SP and values of output parameters. To find out datatypes and output

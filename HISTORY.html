@@ -7,6 +7,63 @@
 <CENTER>
 <H1>History MSSQL modules</H1>
 </CENTER>
+<H3>010505</H3>
+MSSQL::DBlib 1.008 and MSSQL::Sqllib 1.008 released.
+<H4>News for MSSQL::DBlib</H4>
+<UL>
+   <LI>Added more text functions:
+       <A HREF="docs/mssql-dblib.html#dbreadtext">dbreadtext</A>,
+       <A HREF="docs/mssql-dblib.html#dbmoretext">dbmoretext</A>,
+       <A HREF="docs/mssql-dblib.html#dbupdatetext">dbupdatetext</A>,
+       <A HREF="docs/mssql-dblib.html#dbprepupdatetext">dbprepupdatetext</A>,
+       <A HREF="docs/mssql-dblib.html#dbdeletetext">dbdeletetext</A> and
+       <A HREF="docs/mssql-dblib.html#dbcopytext">dbcopytext</A>.
+   </LI>
+   <LI>Enhanced text in the manual for
+       <A HREF="docs/mssql-dblib.html#dbsetopt">dbsetopt</A> and other
+       small documentation fixes.
+   </LI>
+</UL>
+<H4>News for MSSQL::Sqllib</H4>
+<UL>
+   <LI> <A HREF="docs/mssql-sqllib.html#sql_one">sql_one</A> now permits
+        more than one result set to be returned, but the total amounts of
+        rows returned must still be exactly one. Since SQL Server may return
+        an empty result even for a SET statement, it is a bit embarrassing
+        that it didn't work this way from the beginning...
+   </LI>
+   <LI>The <CODE>$rowstyle</CODE> and <CODE>$resultstyle</CODE> parameters
+       of <A HREF="docs/mssql-sqllib.html#sql">sql</A> and
+       <A HREF="docs/mssql-sqllib.html#sql_sp">sql_sp</A> can now be
+       specified in any order.
+   </LI>
+   <LI>There was a bug in <A HREF="docs/mssql-sqllib.html#sql">sql</A> and
+       <A HREF="docs/mssql-sqllib.html#sql_sp">sql_sp</A> which caused the
+       script to crash when there was no results sets at all, for instance
+       because there was a compilation error in the SQL code, and you had
+       set the <A HREF="docs/mssql-sqllib.html#item_maxSeverity">maxSeverity</A>
+       in <A HREF="docs/mssql-sqllib.html#errInfo">errInfo</A> to 25 to
+       prevent any stop on SQL errors, and you had specified a list or a
+       hash to receive the return value.<BR>&nbsp;&nbsp;&nbsp;
+          This is now fixed, and <A HREF="docs/mssql-sqllib.html#sql">sql</A> and
+       <A HREF="docs/mssql-sqllib.html#sql_sp">sql_sp</A> are now specified
+       in this situation to return <CODE>undef</CODE> if you receive the return value
+       in a scalar and an empty list/hash in the other cases.
+   </LI>
+   <LI>Fixed problem that prevented
+       <A HREF="docs/mssql-sqllib.html#sql_init">sql_init</A> to succeed on
+       early service packs of SQL6.5.
+   <LI>The test script 3_conversion.t now also works if your OEM charset is
+       CP437.
+   </LI>
+</UL>
+<H4>Known issues</H4>
+I have had problems with compatibility between NT4 and Windows 2000 with
+Perl 5.005, but no other Perl version. These problems have not been
+specifically with MSSQL::*, but more of a general nature. The binary
+shipped for AS 5xx is built with NT4. The binaries for ActivePerl 5.6 and
+AS 3xx are built with Windows 2000.
+<P>
 <H3>000914</H3>
 MSSQL::Sqllib 1.007 released.
 <H4>News for MSSQL::DBlib</H4>
@@ -28,12 +85,6 @@ MSSQL::Sqllib 1.007 released.
    <LI>Minor adaptions to resolve things that broke with SQL 2000.
    </LI>
 </UL>
-<H4>Known issues</H4>
-I have had problems with compatibility between NT4 and Windows 2000 with
-Perl 5.005, but no other Perl version. These problems have not been
-specifically with MSSQL::*, but more of a general nature. The binary
-shipped for AS 5xx is built with NT4. The binaries for ActivePerl 5.6 and
-AS 3xx are built with Windows 2000.
 </CENTER>
 <H3>000505</H3>
 MSSQL::DBlib 1.006 and MSSQL::Sqllib 1.006 released.
@@ -198,6 +249,6 @@ Initial release for ActiveState Perl only.
 <P>
 <HR>
 <I>
-Last updated <!--$$Modtime:--> 00-09-14 23:04 <!-- $-->
+Last updated <!--$$Modtime:--> 01-05-05 19:01 <!-- $-->
 </I>
 <BODY>

@@ -205,9 +205,8 @@ as you have an explicit list, nothing is imported by default.
 <DT><STRONG><A NAME="item_consts">consts
 
 </A></STRONG><DD>
-Imports all constants, as well as $SQLSEP, the only control variable in
-MSSQL::Sqllib. (In fact it is quite much of a constant, save the fact that
-you can change it. :-)
+Imports all constants, as well as <CODE>$SQLSEP</CODE>, the only control variable in MSSQL::Sqllib. (In fact it is quite much of
+a constant, save the fact that you can change it. :-)
 
 
 <P>
@@ -358,7 +357,7 @@ The following defaults apply for the parameters:
 <P>
 
 <STRONG>$database</STRONG>: the user's default database as defined in SQL Server, with one exception:
-for <EM>sa</EM>, the database will be <EM>tempdb</EM> to avoid a disaster, were you to accidently omit $database.
+for <EM>sa</EM>, the database will be <EM>tempdb</EM> to avoid a disaster, were you to accidently omit <CODE>$database</CODE>.
 
 
 <P>
@@ -407,10 +406,11 @@ you can always run your <A HREF="#sql_init">sql_init</A> from an <CODE>eval</COD
 
 <P>
 
-<STRONG>$server</STRONG> may refer to a named instance, for instance MYMACHINE\SECOND,
-<STRONG>but:</STRONG> Named instances were introduced in SQL2000, and the official word from
-Microsoft is that named instances are not supported with DB-Library.
-However, I have yet to fail to connect to a named instance.
+<STRONG>$server</STRONG> may refer to a named instance, for instance MYMACHINE\SECOND, <STRONG>but:</STRONG>
+Microsoft does not officially support named instances with DB-Library.
+Nevertheless Microsoft have added some code to DB-Library so that it can
+understand named instances. It appears that it works with SQL Server
+authentication but not Windows NT authentication.
 
 
 <P>
@@ -428,20 +428,20 @@ the handle.
 <H2><A NAME="sql">sql
 
 </A></H2>
-<PRE>    $resultref = [$X-&gt;]sql($sql [, $rowstyle [, $resultstyle]]);
-    @result    = [$X-&gt;]sql($sql [, $rowstyle [, $resultstyle]]);
+<PRE>    $resultref = [$X-&gt;]sql($sql [, $rowstyle] [, $resultstyle]]);
+    @result    = [$X-&gt;]sql($sql [, $rowstyle] [, $resultstyle]]);
     %result    = [$X-&gt;]sql($sql, HASH, SINGLEROW);
 </PRE>
 
 <P>
 
-<PRE>    $hashref   = [$X-&gt;]sql($sql, $rowstyle, KEYED, \@keys);
-    %hash      = [$X-&gt;]sql($sql, $rowstyle, KEYED, \@keys);
+<PRE>    $hashref   = [$X-&gt;]sql($sql [, $rowstyle], KEYED, \@keys);
+    %hash      = [$X-&gt;]sql($sql [, $rowstyle], KEYED, \@keys);
 </PRE>
 
 <P>
 
-<PRE>    $retstat   = [$X-&gt;]sql($sql, $rowstyle, \&amp;callback);
+<PRE>    $retstat   = [$X-&gt;]sql($sql [, $rowstyle], \&amp;callback);
 </PRE>
 
 <P>
@@ -464,19 +464,23 @@ If you don't provide a handle, <A HREF="#sql">sql</A> uses the handle created by
 
 <P>
 
-For details on how the various data types in SQL Server is returned, see
+For details on how the various data types in SQL Server are returned, see
 the MSSQL::DBlib routine <A HREF="././mssql-dblib.html#dbnextrow2">dbnextrow2</A>.
 
 
 <P>
 
 The data from SQL Server can be structured in several different ways, as
-determined by the parameters <CODE>$rowstyle</CODE> and $resultstyle.
-<CODE>$rowstyle</CODE> determines how individual rows appears,
+determined by the parameters <CODE>$rowstyle</CODE> and <CODE>$resultstyle</CODE>. <CODE>$rowstyle</CODE> determines how individual rows appear,
 <CODE>$resultstyle</CODE> how the rows are structured. Below I say that the
 return value for a certain combination is a scalar, array or a hash. In
 every case when I say array or hash, you can always opt for receiving the
 return value in a scalar to get a reference to that array/hash.
+
+
+<P>
+
+In the call syntax above, <CODE>$rowstyle</CODE> is shown as coming before <CODE>$resultstyle</CODE>. However, <A HREF="#sql">sql</A> actually permits you to put <CODE>$rowstyle</CODE> after <CODE>$resultstyle</CODE>. This is also true when <CODE>$resultstyle</CODE> is KEYED and <CODE>\&callback</CODE>. However, <CODE>$rowstyle</CODE> must come before <CODE>\@keys</CODE>.
 
 
 <P>
@@ -550,10 +554,9 @@ your needs. Note, however, that the value of <CODE>$SQLSEP</CODE> <EM>must not</
 
 </A></STRONG><DD>
 The rows are returned in one single array, which thus is an array of
-hashes, arrays or scalars depending on $rowstyle. The order of the array is
-the same as the order returned from SQL Server. If the batch returns two or
-more result sets, these will come after each other in the result set, and
-you will have to separate them yourself.
+hashes, arrays or scalars depending on <CODE>$rowstyle</CODE>. The order of the array is the same as the order returned from SQL Server.
+If the batch returns two or more result sets, these will come after each
+other in the result set, and you will have to separate them yourself.
 
 
 <P>
@@ -568,7 +571,8 @@ you will have to separate them yourself.
 </A></STRONG><DD>
 You get an array of result sets in the order they come from SQL Server.
 Each result set is in its turn an array of hashes, arrays or scalars
-dependning on $rowstyle.
+dependning on
+<CODE>$rowstyle</CODE>.
 
 
 <P>
@@ -595,8 +599,7 @@ get what you get, and it may or may not make sense. See also <A HREF="#sql_one">
 The return value is a hash keyed with the data in the highest-level key
 column in the result set. There can be more than one key level, in which
 case you will get one more hash dimension for each key level. In the bottom
-of the structure there is a hash, array or scalar, depending on $rowstyle,
-with the non-key columns of the result set.
+of the structure there is a hash, array or scalar, depending on <CODE>$rowstyle</CODE>, with the non-key columns of the result set.
 
 
 <P>
@@ -638,7 +641,7 @@ the key ABC/17/X.
 The keys you provide in <CODE>@keys</CODE> are supposed to be the unique
 keys of your result set, and appear in all rows of the result set(s). If a key listed in <CODE>@keys</CODE> does not appear in one of the rows,
 this is an error, and <A HREF="#sql">sql</A> will unconditionally abort. If a key value is a duplicate, <A HREF="#sql">sql</A> will emit a warning about this, if warnings are activated. It is undefined
-which values end up in the result set.
+which values that end up in the result set.
 
 
 <P>
@@ -662,6 +665,13 @@ about it, and wish to save network traffic. The return value is <CODE>undef</COD
 </DL>
 The script <EM>sqllib\t\1_resultsets.t</EM> can give you an idea of the structure you get with the various row and
 result styles.
+
+
+<P>
+
+When there are no result sets in the query at all - which may happen if the
+batch does not compile, and you have changed <A HREF="#errInfo">errInfo</A> so that <A HREF="#sql">sql</A> does not abort on errors - you will get <CODE>undef</CODE> in return if you specify a scalar return value. Else you will get an empty
+list/hash.
 
 
 <P>
@@ -809,7 +819,8 @@ With <A HREF="#item_HASH">HASH</A>, though, the COMPUTE rows will have an extra 
 
 <A HREF="#sql_one">sql_one</A> is similar to <A HREF="#sql">sql</A> with the <A HREF="#item_SINGLEROW">SINGLEROW</A> result style. However,
 <A HREF="#sql_one">sql_one</A> requires the SQL batch to return exactly one row, and will abort execution
-if no rows were found, or if there were more than one row or result set.
+if no rows were found, or if there were more than one row. The batch may
+return more than one result set, but all but one must be empty.
 
 
 <P>
@@ -820,25 +831,25 @@ if no rows were found, or if there were more than one row or result set.
 
 </A></H2>
 <PRE>   $resultref = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
-                                 [, $rowstyle [, $resultstyle]]);
+                                 [, $rowstyle] [, $resultstyle]);
    @result    = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
-                                 [, $rowstyle [, $resultstyle]]);
+                                 [, $rowstyle] [, $resultstyle]);
    %result    = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params],
                                  HASH, SINGLESET);
 </PRE>
 
 <P>
 
-<PRE>   $hashref   = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params],
-                                 $rowstyle, KEYED, \@keys);
-   %hash      = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params],
-                                 $rowstyle, KEYED, \@keys);
+<PRE>   $hashref   = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
+                                 [, $rowstyle], KEYED, \@keys);
+   %hash      = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
+                                 [,  $rowstyle], KEYED, \@keys);
 </PRE>
 
 <P>
 
-<PRE>   $retstat   = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params],
-                                 $rowstyle, \&amp;callback);
+<PRE>   $retstat   = [$X-&gt;]sql_sp($sp [, \$sp_retstat] [, \@params] [, \%params]
+                                 [, $rowstyle], \&amp;callback);
 </PRE>
 
 <P>
